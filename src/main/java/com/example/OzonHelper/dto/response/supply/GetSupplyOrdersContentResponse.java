@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class GetSupplyOrdersResponse {
-    @JsonProperty("order_ids")
-    private List<String> supplyOrderIds;
+public class GetSupplyOrdersContentResponse {
+    @JsonProperty("items")
+    private List<SupplyOrderContentDto> items;
 }

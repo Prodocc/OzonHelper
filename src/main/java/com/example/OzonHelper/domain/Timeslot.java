@@ -1,14 +1,13 @@
 package com.example.OzonHelper.domain;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
+@AllArgsConstructor
 @Data
 public class Timeslot {
-    @JsonProperty("from")
-    private OffsetDateTime from;
-    @JsonProperty("to")
-    private OffsetDateTime to;
+    private LocalDateTime from;
+    private LocalDateTime to;
 }

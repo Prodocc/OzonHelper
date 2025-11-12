@@ -10,5 +10,5 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetSupplyOrderInfoResponse {
     @JsonProperty("orders")
-    private List<SupplyOrderInfo> orders;
+    private List<SupplyOrderInfoDto> orders;
 }

@@ -6,7 +6,11 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SupplyBundleId {
-    @JsonProperty("bundle_id")
-    private String bundleId;
+public class WarehouseDto {
+    @JsonProperty("address")
+    private String address;
+    @JsonProperty("name")
+    private String name;
+    @JsonProperty("warehouse_id")
+    private long id;
 }

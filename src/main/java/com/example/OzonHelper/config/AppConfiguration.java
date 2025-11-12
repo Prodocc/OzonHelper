@@ -1,7 +1,7 @@
 package com.example.OzonHelper.config;
 
-import com.example.OzonHelper.client.MarketplaceClient;
 import com.example.OzonHelper.client.OzonClient;
+import com.example.OzonHelper.domain.mapper.SupplyOrderMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.net.http.HttpClient;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Configuration
 @EnableConfigurationProperties(StoreProperties.class)
@@ -37,7 +36,7 @@ public class AppConfiguration {
     }
 
     @Bean
-    public List<MarketplaceClient> ozonClient(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
+    public List<OzonClient> ozonClient(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
 
         List<OzonStoreConfig> ozonStores = storeProperties.getOzon();
 
@@ -46,7 +45,8 @@ public class AppConfiguration {
                         ozonStoreConfig,
                         ozonApiHost,
                         httpClient,
-                        objectMapper
-                )).collect(Collectors.toUnmodifiableList());
+                        objectMapper,
+                        new SupplyOrderMapper()
+                )).toList();
     }
 }

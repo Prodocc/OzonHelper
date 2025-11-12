@@ -11,7 +11,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetSupplyOrdersCompositionRequest {
     @JsonProperty("bundle_ids")
-    private List<SupplyBundleId> bundleIds;
+    private List<String> bundleIds;
     @JsonProperty("limit")
     private int limit;
 }
