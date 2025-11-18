@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.response.supply;
 
-import com.example.OzonHelper.enums.SupplyStatus;
+import com.example.OzonHelper.enums.SupplyState;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -10,7 +10,7 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SupplyOrderInfoDto {
+public class SupplyOrderDto {
     @JsonProperty("created_date")
     private LocalDateTime creationDate;
     @JsonProperty("drop_off_warehouse")
@@ -22,9 +22,9 @@ public class SupplyOrderInfoDto {
     @JsonProperty("order_tags")
     private OrderTags orderTags;
     @JsonProperty("state")
-    private SupplyStatus supplyStatus;
+    private SupplyState supplyState;
     @JsonProperty("supplies")
-    private List<SuppliesDto> supplies;
+    private List<SupplyInfoDto> supplies;
     @JsonProperty("timeslot")
     private TimeSlotWrapperDto timeslotWrapper;
 }

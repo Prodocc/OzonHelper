@@ -1,8 +1,8 @@
 package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
-import com.example.OzonHelper.dto.response.supply.*;
-import com.example.OzonHelper.enums.SupplyStatus;
+import com.example.OzonHelper.dto.response.supply.SupplyOrderDto;
+import com.example.OzonHelper.enums.SupplyState;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -18,7 +18,9 @@ public class OzonHelperApplication {
 
         List<OzonClient> ozonClients = run.getBean("ozonClient", List.class);
         OzonClient client = ozonClients.get(0);
-        List<String> supplyOrdersIds = client.getSupplyOrdersIds(SupplyStatus.READY_TO_SUPPLY);
+        List<String> supplyOrdersIds = client.getSupplyOrdersIds(SupplyState.READY_TO_SUPPLY);
         System.out.println(supplyOrdersIds);
+        List<SupplyOrderDto> supplyOrders = client.getSupplyOrders(supplyOrdersIds);
+        System.out.println(supplyOrders);
     }
 }

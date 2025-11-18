@@ -6,6 +6,8 @@ import lombok.Data;
 
 import java.util.List;
 
+//TODO choose name for this class
+
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetSupplyOrdersResponse {

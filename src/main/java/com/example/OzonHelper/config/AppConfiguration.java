@@ -14,7 +14,7 @@ import java.net.http.HttpClient;
 import java.util.List;
 
 @Configuration
-@EnableConfigurationProperties(StoreProperties.class)
+@EnableConfigurationProperties({StoreProperties.class})
 public class AppConfiguration {
 
     @Bean
