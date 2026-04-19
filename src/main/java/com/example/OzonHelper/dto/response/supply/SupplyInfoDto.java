@@ -1,19 +1,19 @@
 package com.example.OzonHelper.dto.response.supply;
 
-import com.example.OzonHelper.enums.SupplyStatus;
+import com.example.OzonHelper.enums.SupplyState;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SuppliesDto {
+public class SupplyInfoDto {
     @JsonProperty("is_crossdock")
     private boolean isCrossDock;
     @JsonProperty("bundle_id")
     private String bundleId;
     @JsonProperty("state")
-    private SupplyStatus supplyStatus;
+    private SupplyState supplyState;
     @JsonProperty("storage_warehouse")
     private WarehouseDto receivingWarehouse;
     @JsonProperty("supply_id")

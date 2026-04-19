@@ -1,15 +1,11 @@
 package com.example.OzonHelper.enums;
 
-import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
-
-import java.util.Arrays;
-import java.util.Optional;
 
 /**
  * Статусы поставок FBO
  */
-public enum SupplyStatus {
+public enum SupplyState {
     DATA_FILLING("DATA_FILLING", "Заполнение данных"),
     READY_TO_SUPPLY("READY_TO_SUPPLY", "Готова к отгрузке"),
     ACCEPTED_AT_SUPPLY_WAREHOUSE("ACCEPTED_AT_SUPPLY_WAREHOUSE", "Принята на точке отгрузки"),
@@ -26,7 +22,7 @@ public enum SupplyStatus {
     @Getter
     private final String description;
 
-    SupplyStatus(String apiValue, String description) {
+    SupplyState(String apiValue, String description) {
         this.apiValue = apiValue;
         this.description = description;
     }

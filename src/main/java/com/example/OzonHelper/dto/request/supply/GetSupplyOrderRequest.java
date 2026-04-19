@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class GetSupplyOrderInfoRequest {
+public class GetSupplyOrderRequest {
     @JsonProperty("order_ids")
     private List<String> supplyOrderIds;
 }

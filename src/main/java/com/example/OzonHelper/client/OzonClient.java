@@ -8,7 +8,7 @@ import com.example.OzonHelper.dto.request.supply.*;
 import com.example.OzonHelper.dto.response.supply.*;
 import com.example.OzonHelper.enums.OzonApiEndpoint;
 import com.example.OzonHelper.enums.SupplySortStatus;
-import com.example.OzonHelper.enums.SupplyStatus;
+import com.example.OzonHelper.enums.SupplyState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -62,7 +62,7 @@ public class OzonClient implements MarketplaceClient {
         return this.supplierDetails;
     }
 
-    private HttpResponse<String> sendRequest(String url, Object JsonRequestBodyObject) throws IOException, InterruptedException {
+    private HttpResponse<String> createJsonBodyAndSendRequest(String url, Object JsonRequestBodyObject) throws IOException, InterruptedException {
         String requestJsonBody = mapper.writeValueAsString(JsonRequestBodyObject);
         return sendRequest(url, requestJsonBody);
     }
@@ -79,31 +79,31 @@ public class OzonClient implements MarketplaceClient {
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    public List<String> getSupplyOrdersIds(SupplyStatus... supplyStatuses) throws IOException, InterruptedException {
-        GetSupplyOrdersRequest request = new GetSupplyOrdersRequest();
+    public List<String> getSupplyOrdersIds(SupplyState... supplyStates) throws IOException, InterruptedException {
+        GetSupplyOrdersID request = new GetSupplyOrdersID();
         GetSupplyOrdersFilter filter = new GetSupplyOrdersFilter();
 
-        filter.setStates(Arrays.stream(supplyStatuses).toList());
+        filter.setStates(Arrays.stream(supplyStates).toList());
 
         request.setFilter(filter);
         request.setLimit(SUPPLY_ORDERS_MAX_LIMIT);
         request.setSortBy(SupplySortStatus.TIMESLOT_FROM_UTC);
 
-        HttpResponse<String> response = sendRequest(
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_ORDER_LIST.getFullUrl(apiHost),
                 request);
         return mapper.readValue(response.body(), GetSupplyOrdersResponse.class).getSupplyOrderIds();
     }
 
-    public List<SupplyOrderInfoDto> getSupplyOrdersInfo(List<String> supplyOrderIds) throws IOException, InterruptedException {
-        GetSupplyOrderInfoRequest request = new GetSupplyOrderInfoRequest();
+    public List<SupplyOrderDto> getSupplyOrders(List<String> supplyOrderIds) throws IOException, InterruptedException {
+        GetSupplyOrderRequest request = new GetSupplyOrderRequest();
         request.setSupplyOrderIds(supplyOrderIds);
 
-        HttpResponse<String> response = sendRequest(
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_ORDER_INFO.getFullUrl(apiHost),
                 request);
 
-        return mapper.readValue(response.body(), GetSupplyOrderInfoResponse.class).getOrders();
+        return mapper.readValue(response.body(), GetSupplyOrderResponse.class).getOrders();
     }
 
     public List<SupplyOrderContentDto> getSupplyOrdersContent(List<String> bundleIds) throws IOException, InterruptedException {
@@ -112,7 +112,7 @@ public class OzonClient implements MarketplaceClient {
         request.setBundleIds(bundleIds);
         request.setLimit(SUPPLY_ORDERS_MAX_LIMIT);
 
-        HttpResponse<String> response = sendRequest(
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_ORDER_COMPOSITION.getFullUrl(apiHost),
                 request);
 

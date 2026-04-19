@@ -1,6 +1,5 @@
 package com.example.OzonHelper.dto.request.supply;
 
-import com.example.OzonHelper.dto.response.supply.SupplyBundleId;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
