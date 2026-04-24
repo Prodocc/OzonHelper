@@ -2,6 +2,10 @@ package com.example.OzonHelper.client;
 
 import com.example.OzonHelper.config.OzonStoreConfig;
 import com.example.OzonHelper.domain.mapper.SupplyOrderMapper;
+import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
+import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
+import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
+import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.response.supply.SupplyOrderContentDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.supply.*;
@@ -18,6 +22,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 
@@ -25,13 +31,13 @@ public class OzonClient implements MarketplaceClient {
 
     private static final String MARKETPLACE_NAME = "OZON";
     private final int SUPPLY_ORDERS_MAX_LIMIT = 100;
+    private final int FBS_POSTING_MAX_LIMIT = 100;
 
     private final String clientId;
     private final String apiKey;
     private final String apiHost;
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
-    private final SupplyOrderMapper supplyOrderMapper;
     private final String supplierDetails;
 
 
@@ -41,7 +47,6 @@ public class OzonClient implements MarketplaceClient {
         this.apiHost = ozonApiHost;
         this.clientId = config.getClientId();
         this.apiKey = config.getApiKey();
-        this.supplyOrderMapper = supplyOrderMapper;
         this.supplierDetails = config.getName();
     }
 
@@ -50,7 +55,6 @@ public class OzonClient implements MarketplaceClient {
     public List<OzonPostingRow> getPostings(LocalDate dateFrom, LocalDate dateTo, String[] skus, String... delivery_schema) throws IOException, InterruptedException {
         return List.of();
     }
-
 
     @Override
     public String getMarketplaceName() {
@@ -64,6 +68,7 @@ public class OzonClient implements MarketplaceClient {
 
     private HttpResponse<String> createJsonBodyAndSendRequest(String url, Object JsonRequestBodyObject) throws IOException, InterruptedException {
         String requestJsonBody = mapper.writeValueAsString(JsonRequestBodyObject);
+
         return sendRequest(url, requestJsonBody);
     }
 
@@ -119,5 +124,23 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSupplyOrdersContentResponse.class).getItems();
     }
 
+    public List<PostingDto> getFBSPostingList(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
+        GetFbsPostingListRequest request = new GetFbsPostingListRequest();
+        GetFbsPostingListFilter filter = new GetFbsPostingListFilter();
+
+        filter.setSince(since.toInstant(ZoneOffset.UTC).toString());
+        filter.setTo(to.toInstant(ZoneOffset.UTC).toString());
+        filter.setStatus(status);
+
+        request.setFilter(filter);
+        request.setLimit(FBS_POSTING_MAX_LIMIT);
+        request.setOffset(0);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.FBS_POSTING_LIST.getFullUrl(apiHost),
+                request);
+
+        return mapper.readValue(response.body(), GetFbsPostingListResponse.class).getResult().getPostings();
+    }
 
 }
