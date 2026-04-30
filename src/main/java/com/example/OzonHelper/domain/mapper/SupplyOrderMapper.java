@@ -1,11 +1,7 @@
 package com.example.OzonHelper.domain.mapper;
 
-import com.example.OzonHelper.client.OzonClient;
-//import com.example.OzonHelper.domain.SupplyOrder;
 import com.example.OzonHelper.domain.Timeslot;
 import com.example.OzonHelper.domain.Warehouse;
-import com.example.OzonHelper.dto.response.supply.SupplyOrderContentDto;
-import com.example.OzonHelper.dto.response.supply.SupplyOrderInfoDto;
 import com.example.OzonHelper.dto.response.supply.TimeSlotDto;
 import com.example.OzonHelper.dto.response.supply.WarehouseDto;
 

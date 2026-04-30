@@ -9,12 +9,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.net.http.HttpClient;
 import java.util.List;
 
 @Configuration
 @EnableConfigurationProperties({StoreProperties.class})
+@EnableScheduling
+@EnableAsync
 public class AppConfiguration {
 
     @Bean
@@ -49,4 +54,5 @@ public class AppConfiguration {
                         new SupplyOrderMapper()
                 )).toList();
     }
+
 }
