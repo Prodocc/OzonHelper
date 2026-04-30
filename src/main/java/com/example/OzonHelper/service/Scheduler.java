@@ -33,7 +33,7 @@ public class Scheduler {
         }
         if (processFBSLog(since)) {
             //write to log list
-            tableManager.writeFbsPostings();
+            tableManager.CheckAndWriteFbsLogListPostings();
         }
     }
 
@@ -49,6 +49,12 @@ public class Scheduler {
         if (processFBSLog(LocalDateTime.now().minusHours(HOURS_LAST_STEP))) {
             //check log list and write
         }
+    }
+
+    @Scheduled(cron = "0 0 0 * * 5L")
+    public void createNewLogListSheet() {
+        //check for existing log list for next month, if no then
+        //create new log list sheet and write dates for all working days
     }
 
     private boolean processFBSLog(LocalDateTime since) throws IOException, InterruptedException {
