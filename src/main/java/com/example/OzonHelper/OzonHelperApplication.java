@@ -10,7 +10,7 @@ import java.io.IOException;
 @SpringBootApplication
 public class OzonHelperApplication {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
 //        List<OzonClient> ozonClients = run.getBean("ozonClient", List.class);
@@ -18,7 +18,8 @@ public class OzonHelperApplication {
 //        System.out.println(client.getFBSPostingList(LocalDateTime.now().minusHours(7), LocalDateTime.now(), ""));
 
         TableManager tableManager = run.getBean("tableManager", TableManager.class);
-//        tableManager.someMethod();
+//        tableManager.CheckAndWriteFbsLogListPostings();
+        tableManager.CheckAndWriteFbsLogListPostings();
     }
 
 }
