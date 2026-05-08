@@ -2,7 +2,6 @@ package com.example.OzonHelper.service;
 
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.enums.PostingStatus;
-import com.example.OzonHelper.util.TableManager;
 import lombok.AllArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -21,7 +20,7 @@ public class Scheduler {
     private static final int HOURS_LAST_STEP = 1;
 
     private final List<OzonClient> clients;
-    private final TableManager tableManager;
+    private final FbsLogService fbsLogService;
 
     @Scheduled(cron = "0 0 9 * * 1-5")
     public void fillFBSLogListMorning() throws IOException, InterruptedException {
@@ -33,7 +32,7 @@ public class Scheduler {
         }
         if (processFBSLog(since)) {
             //write to log list
-            tableManager.CheckAndWriteFbsLogListPostings();
+            fbsLogService.syncLogList();
         }
     }
 
@@ -63,9 +62,9 @@ public class Scheduler {
 
     private boolean checkFBSPostings(LocalDateTime since, LocalDateTime to) throws IOException, InterruptedException {
         for (OzonClient client : clients) {
-            if (client.getFBSPostingList(since, to, PostingStatus.AWAITING_PACKAGING.getValue()).size() > 1)
+            if (client.getFbsPostingList(since, to, PostingStatus.AWAITING_PACKAGING.getValue()).size() > 1)
                 return true;
-            if (client.getFBSPostingList(since, to, PostingStatus.AWAITING_DELIVER.getValue()).size() > 1) return true;
+            if (client.getFbsPostingList(since, to, PostingStatus.AWAITING_DELIVER.getValue()).size() > 1) return true;
         }
         return false;
     }

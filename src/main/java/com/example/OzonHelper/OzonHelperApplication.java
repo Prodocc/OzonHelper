@@ -1,6 +1,6 @@
 package com.example.OzonHelper;
 
-import com.example.OzonHelper.util.TableManager;
+import com.example.OzonHelper.service.FbsLogService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -17,9 +17,8 @@ public class OzonHelperApplication {
 //        OzonClient client = ozonClients.get(0);
 //        System.out.println(client.getFBSPostingList(LocalDateTime.now().minusHours(7), LocalDateTime.now(), ""));
 
-        TableManager tableManager = run.getBean("tableManager", TableManager.class);
-//        tableManager.CheckAndWriteFbsLogListPostings();
-        tableManager.CheckAndWriteFbsLogListPostings();
+        FbsLogService fbsLogService = run.getBean("fbsLogService", FbsLogService.class);
+        fbsLogService.syncLogList();
     }
 
 }
