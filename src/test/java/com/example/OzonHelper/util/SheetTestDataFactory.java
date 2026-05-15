@@ -5,7 +5,7 @@ import java.util.List;
 
 public class SheetTestDataFactory {
 
-    public static List<List<Object>> createTableWithDotsData(int rows, int cols) {
+    public static List<List<Object>> createTableWithDots(int rows, int cols) {
         List<List<Object>> table = new ArrayList<>();
 
         for (int i = 0; i < rows; i++) {

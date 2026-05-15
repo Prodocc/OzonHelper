@@ -3,6 +3,7 @@ package com.example.OzonHelper.util;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -156,7 +157,26 @@ class FbsLogScopeCalculatorTest {
 
     @Test
     public void calculateScope_WhenThereAreTwoScopes_ShouldReturnCorrectScope() {
+        List<List<Object>> table = createTable(10, 4);
+        int rowToAdd = 6;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        String today = LocalDate.now().format(formatter);
+        LocalDate nextDate = LocalDate.now();
+        if (nextDate.getDayOfWeek().equals(DayOfWeek.FRIDAY)) {
+            nextDate = nextDate.plusDays(3);
+        } else {
+            nextDate = nextDate.plusDays(1);
+        }
+        String nextDay = nextDate.format(formatter);
 
+        table.get(0).set(0, today); // set startScope
+        table.get(table.size() / 2).set(0, nextDay); // set endScope
+
+        SheetScope sheetScope = calculator.calculateScope(table, rowToAdd);
+
+        assertThat(sheetScope.getStartIndex()).isEqualTo(0);
+        assertThat(sheetScope.getEndIndex()).isEqualTo(table.size() / 2);
+        assertThat(sheetScope.getLastDataRowIndex()).isEqualTo(5);
     }
 
 }

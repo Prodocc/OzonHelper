@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.example.OzonHelper.util.SheetTestDataFactory.createTableWithDotsData;
+import static com.example.OzonHelper.util.SheetTestDataFactory.createTableWithDots;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SheetAnalyzerTest {
@@ -19,7 +19,7 @@ class SheetAnalyzerTest {
 
     @Test
     void findLastNonEmptyRowIndex_WhenDataAtStart() {
-        List<List<Object>> table = createTableWithDotsData(3, 4);
+        List<List<Object>> table = createTableWithDots(3, 4);
 
         table.get(0).set(0, "some text");
 
@@ -30,7 +30,7 @@ class SheetAnalyzerTest {
 
     @Test
     void findLastNonEmptyRowIndex_WhenDataAtEnd() {
-        List<List<Object>> table = createTableWithDotsData(3, 4);
+        List<List<Object>> table = createTableWithDots(3, 4);
 
         table.get(2).set(0, "some text");
 
@@ -41,7 +41,7 @@ class SheetAnalyzerTest {
 
     @Test
     void findLastNonEmptyRowIndex_WhenThereIsNoUsefulData() {
-        List<List<Object>> table = createTableWithDotsData(3, 4);
+        List<List<Object>> table = createTableWithDots(3, 4);
 
         int lastNonEmptyRowIndex = analyzer.findLastNonEmptyRowIndex(table, 3);
 
@@ -57,7 +57,7 @@ class SheetAnalyzerTest {
 
     @Test
     public void findDateRowIndex_WhenDateAtStart() {
-        List<List<Object>> table = createTableWithDotsData(5, 5);
+        List<List<Object>> table = createTableWithDots(5, 5);
         String targetDay = "04.03.2026";
         int dateColumnIndex = 0;
 
@@ -70,7 +70,7 @@ class SheetAnalyzerTest {
 
     @Test
     public void findDateRowIndex_WhenDateAtMiddle() {
-        List<List<Object>> table = createTableWithDotsData(5, 5);
+        List<List<Object>> table = createTableWithDots(5, 5);
         String targetDay = "04.03.2026";
         int dateColumnIndex = 0;
 
@@ -83,7 +83,7 @@ class SheetAnalyzerTest {
 
     @Test
     public void findDateRowIndex_WhenDateAtEnd() {
-        List<List<Object>> table = createTableWithDotsData(5, 5);
+        List<List<Object>> table = createTableWithDots(5, 5);
         String targetDay = "04.03.2026";
         int dateColumnIndex = 0;
 
@@ -96,7 +96,7 @@ class SheetAnalyzerTest {
 
     @Test
     public void findDateRowIndex_WhenRowIsShorterThanTargetColumnIndex() {
-        List<List<Object>> table = createTableWithDotsData(5, 2);
+        List<List<Object>> table = createTableWithDots(5, 2);
         String targetDay = "04.03.2026";
         int dateColumnIndex = 4;
 
@@ -107,7 +107,7 @@ class SheetAnalyzerTest {
 
     @Test
     public void findDateRowIndex_WhenNoDate() {
-        List<List<Object>> table = createTableWithDotsData(5, 5);
+        List<List<Object>> table = createTableWithDots(5, 5);
         String targetDay = "04.03.2026";
         int dateColumnIndex = 0;
 
