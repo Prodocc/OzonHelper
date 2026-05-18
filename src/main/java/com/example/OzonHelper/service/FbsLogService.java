@@ -17,6 +17,7 @@ import java.util.Locale;
 @Service
 public class FbsLogService {
     private final String LOG_LIST_RANGE = "B1:J500";
+    private final String FBS_LOG_LIST_SPREADSHEET_KEY = "fbs-log-id";
     private final String FBS_LOG_LIST_DATE_COLUMN = "B";
     private final String FBS_LOG_LIST_PARTNER_COLUMN = "C";
     private final String FBS_LOG_LIST_ADDRESS_COLUMN = "D";
@@ -42,7 +43,7 @@ public class FbsLogService {
 
     // calls only if there are fbs postings
     public void syncLogList() throws IOException {
-        String spreadSheetId = sheetsProperties.getSheets().get("fbs-log-id");
+        String spreadSheetId = sheetsProperties.getSheets().get(FBS_LOG_LIST_SPREADSHEET_KEY);
 
         String title = getLogListTitle(spreadSheetId);
         String range = getLogListRange(title, LOG_LIST_RANGE);
@@ -53,14 +54,18 @@ public class FbsLogService {
 
         SheetScope sheetScope = scopeCalculator.calculateScope(rawData, FBS_ROWS_TO_ADD);
 
+        System.out.println(sheetScope);
+
         int sheetId = googleClient.getSheetIdByTitle(title, spreadSheetId);
 
         if (!sheetScope.isNew() && scopeCalculator.hasPostings(sheetScope, rawData, FBS_STRING_TO_CHECK)) {
             return;
         }
         if (sheetScope.isNew()) {
+            System.out.println("A");
             writeNewScope(spreadSheetId, sheetId, title, sheetScope);
         } else {
+            System.out.println("B");
             expandExistingScope(spreadSheetId, title, sheetScope);
         }
 

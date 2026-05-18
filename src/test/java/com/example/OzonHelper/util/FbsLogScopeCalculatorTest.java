@@ -127,10 +127,9 @@ class FbsLogScopeCalculatorTest {
     public void calculateScope_WhenThereAreOnlyStartScopeAtStart_ShouldReturnCorrectScope() {
         List<List<Object>> table = createTable(10, 4);
         int rowsToAdd = 6;
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        String today = LocalDate.now().format(formatter);
+        String[] startAndEndDateForTest = SheetTestDataFactory.getStartAndEndDateForTest();
 
-        table.get(0).set(0, today);
+        table.get(0).set(0, startAndEndDateForTest[0]);
 
         SheetScope sheetScope = calculator.calculateScope(table, rowsToAdd);
 
@@ -143,10 +142,9 @@ class FbsLogScopeCalculatorTest {
     public void calculateScope_WhenThereAreOnlyStartScopeAtEnd_ShouldReturnCorrectScope() {
         List<List<Object>> table = createTable(10, 4);
         int rowsToAdd = 6;
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        String today = LocalDate.now().format(formatter);
+        String[] startAndEndDateForTest = SheetTestDataFactory.getStartAndEndDateForTest();
 
-        table.get(table.size() - 1).set(0, today);
+        table.get(table.size() - 1).set(0, startAndEndDateForTest[0]);
 
         SheetScope sheetScope = calculator.calculateScope(table, rowsToAdd);
 
@@ -159,18 +157,10 @@ class FbsLogScopeCalculatorTest {
     public void calculateScope_WhenThereAreTwoScopes_ShouldReturnCorrectScope() {
         List<List<Object>> table = createTable(10, 4);
         int rowToAdd = 6;
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        String today = LocalDate.now().format(formatter);
-        LocalDate nextDate = LocalDate.now();
-        if (nextDate.getDayOfWeek().equals(DayOfWeek.FRIDAY)) {
-            nextDate = nextDate.plusDays(3);
-        } else {
-            nextDate = nextDate.plusDays(1);
-        }
-        String nextDay = nextDate.format(formatter);
+        String[] startAndEndDateForTest = SheetTestDataFactory.getStartAndEndDateForTest();
 
-        table.get(0).set(0, today); // set startScope
-        table.get(table.size() / 2).set(0, nextDay); // set endScope
+        table.get(0).set(0, startAndEndDateForTest[0]); // set startScope
+        table.get(table.size() / 2).set(0, startAndEndDateForTest[1]); // set endScope
 
         SheetScope sheetScope = calculator.calculateScope(table, rowToAdd);
 
