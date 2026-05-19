@@ -14,6 +14,7 @@ import com.example.OzonHelper.enums.OzonApiEndpoint;
 import com.example.OzonHelper.enums.SupplySortStatus;
 import com.example.OzonHelper.enums.SupplyState;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
@@ -32,7 +33,6 @@ public class OzonClient implements MarketplaceClient {
     private static final String MARKETPLACE_NAME = "OZON";
     private final int SUPPLY_ORDERS_MAX_LIMIT = 100;
     private final int FBS_POSTING_MAX_LIMIT = 100;
-
     private final String clientId;
     private final String apiKey;
     private final String apiHost;
@@ -124,7 +124,7 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSupplyOrdersContentResponse.class).getItems();
     }
 
-    public List<PostingDto> getFBSPostingList(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
+    public List<PostingDto> getFbsPostingList(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
         GetFbsPostingListRequest request = new GetFbsPostingListRequest();
         GetFbsPostingListFilter filter = new GetFbsPostingListFilter();
 
@@ -141,6 +141,10 @@ public class OzonClient implements MarketplaceClient {
                 request);
 
         return mapper.readValue(response.body(), GetFbsPostingListResponse.class).getResult().getPostings();
+    }
+
+    public boolean fbsHasPostings(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
+        return getFbsPostingList(since, to, status).size() > 1;
     }
 
 }
