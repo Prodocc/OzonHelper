@@ -54,18 +54,17 @@ public class FbsLogService {
 
         SheetScope sheetScope = scopeCalculator.calculateScope(rawData, FBS_ROWS_TO_ADD);
 
-        System.out.println(sheetScope);
-
         int sheetId = googleClient.getSheetIdByTitle(title, spreadSheetId);
 
         if (!sheetScope.isNew() && scopeCalculator.hasPostings(sheetScope, rawData, FBS_STRING_TO_CHECK)) {
+            System.out.println("A");
             return;
         }
         if (sheetScope.isNew()) {
-            System.out.println("A");
+            System.out.println("B");
             writeNewScope(spreadSheetId, sheetId, title, sheetScope);
         } else {
-            System.out.println("B");
+            System.out.println("C");
             expandExistingScope(spreadSheetId, title, sheetScope);
         }
 
@@ -99,17 +98,16 @@ public class FbsLogService {
         googleClient.insertRow(spreadSheetId, googleClient.getSheetIdByTitle(sheetTitle, spreadSheetId), scope.getStartIndex(), scope.getStartIndex() + 1);
     }
 
-    public String getLogListTitle(String spreadSheetId) {
+    //TODO: use adapter for google client sheet
+
+    public String getLogListTitle(String spreadSheetId) throws IOException {
+        System.out.println("spreadSheetId = " + spreadSheetId);
         String month = LocalDateTime.now().getMonth().getDisplayName(TextStyle.FULL_STANDALONE, new Locale("RU"));
         int year = LocalDateTime.now().getYear();
         String sheetTitle = month + " " + year;
 
         List<Sheet> sheets;
-        try {
-            sheets = googleClient.getSheets(spreadSheetId);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        sheets = googleClient.getSheets(spreadSheetId);
         for (Sheet sheet : sheets) {
             String tmpTitle = sheet.getProperties().getTitle();
             if (tmpTitle.equals(sheetTitle) || tmpTitle.toLowerCase().equals(sheetTitle)) {
