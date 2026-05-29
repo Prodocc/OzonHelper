@@ -1,7 +1,6 @@
 package com.example.OzonHelper.config;
 
 import com.example.OzonHelper.client.OzonClient;
-import com.example.OzonHelper.domain.mapper.SupplyOrderMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -9,7 +8,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -50,8 +48,7 @@ public class AppConfiguration {
                         ozonStoreConfig,
                         ozonApiHost,
                         httpClient,
-                        objectMapper,
-                        new SupplyOrderMapper()
+                        objectMapper
                 )).toList();
     }
 

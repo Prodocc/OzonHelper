@@ -1,29 +1,29 @@
 package com.example.OzonHelper.domain.mapper;
 
-import com.example.OzonHelper.domain.Timeslot;
+import com.example.OzonHelper.domain.Cluster;
 import com.example.OzonHelper.domain.Warehouse;
-import com.example.OzonHelper.dto.response.supply.TimeSlotDto;
-import com.example.OzonHelper.dto.response.supply.WarehouseDto;
+import com.example.OzonHelper.dto.response.supply.ClusterDto;
+import com.example.OzonHelper.dto.response.supply.GetClustersResponse;
+
+import java.util.List;
 
 public class SupplyOrderMapper {
-//    public SupplyOrder toSupplyOrder(SupplyOrderInfoDto supplyInfo, SupplyOrderContentDto supplyContent, OzonClient client) {
-//        SupplyOrder supplyOrder = new SupplyOrder();
-//
-//        supplyOrder.setOrderNumber(supplyInfo.getOrderNumber());
-//        supplyOrder.setTimeslot(mapToDomain(supplyInfo.getTimeslotWrapper().getTimeslot()));
-//        supplyOrder.setSupplierDetails(client.getSupplierDetails());
-//        supplyOrder.setShippingWarehouse(mapToDomain(supplyInfo.getShippingWarehouse()));
-//        supplyOrder.setReceivingWarehouse(mapToDomain(supplyInfo.getSupplies().get(0).getReceivingWarehouse()));
-////        supplyOrder.setSupplies()
-//
-//        return supplyOrder;
-//    }
 
-    private Timeslot mapToDomain(TimeSlotDto dto) {
-        return new Timeslot(dto.getFrom(), dto.getTo());
+    public Cluster mapToDomain(ClusterDto clusterDto) {
+        Cluster cluster = new Cluster();
+
+        cluster.setId(clusterDto.getId());
+        cluster.setName(clusterDto.getName());
+        cluster.setMacrolocalClusterId(clusterDto.getMacrolocalClusterId());
+
+        return cluster;
     }
 
-    private Warehouse mapToDomain(WarehouseDto dto) {
-        return new Warehouse(dto.getAddress(), dto.getName(), dto.getId());
+    public Warehouse mapToDomain(GetClustersResponse.WarehouseDto warehouseDto){
+        Warehouse warehouse = new Warehouse();
+
+        warehouse.setId(warehouseDto.getId());
+
+        return warehouse;
     }
 }

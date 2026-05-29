@@ -91,7 +91,7 @@ public class FbsLogService {
         googleClient.writeTable(scopeStartData, spreadSheetId, writeRange);
 
         GridRange colorRange = GoogleUtils.createRowRange(scope.getStartIndex(), scope.getStartIndex() + 1);
-        googleClient.setBackgroundColor(spreadSheetId, sheetId, colorRange, SheetColors.FBS_LIST_COLOR_DATE_COLOR.toGoogleColor());
+        googleClient.setBackgroundColor(spreadSheetId, sheetId, colorRange, SheetColors.FBS_LIST_DATE_COLOR.toGoogleColor());
     }
 
     public void expandExistingScope(String spreadSheetId, String sheetTitle, SheetScope scope) throws IOException {

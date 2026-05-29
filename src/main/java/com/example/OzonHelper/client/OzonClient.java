@@ -1,7 +1,6 @@
 package com.example.OzonHelper.client;
 
 import com.example.OzonHelper.config.OzonStoreConfig;
-import com.example.OzonHelper.domain.mapper.SupplyOrderMapper;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
@@ -10,11 +9,8 @@ import com.example.OzonHelper.dto.response.supply.SupplyOrderContentDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.supply.*;
 import com.example.OzonHelper.dto.response.supply.*;
-import com.example.OzonHelper.enums.OzonApiEndpoint;
-import com.example.OzonHelper.enums.SupplySortStatus;
-import com.example.OzonHelper.enums.SupplyState;
+import com.example.OzonHelper.enums.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,6 +23,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+
+//TODO: split from ozonclient to -> FBSClient/FBOClient
 
 public class OzonClient implements MarketplaceClient {
 
@@ -41,7 +39,7 @@ public class OzonClient implements MarketplaceClient {
     private final String supplierDetails;
 
 
-    public OzonClient(OzonStoreConfig config, String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper, SupplyOrderMapper supplyOrderMapper) {
+    public OzonClient(OzonStoreConfig config, String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
         this.mapper = objectMapper;
         this.apiHost = ozonApiHost;
@@ -146,5 +144,29 @@ public class OzonClient implements MarketplaceClient {
     public boolean fbsHasPostings(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
         return getFbsPostingList(since, to, status).size() > 1;
     }
+
+    public List<ClusterDto> getClusters() throws IOException, InterruptedException {
+        GetClustersRequest request = new GetClustersRequest();
+        request.setClusterType(ClusterType.CLUSTER_TYPE_OZON.toString());
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_CLUSTERS_LIST.getFullUrl(apiHost),
+                request);
+
+        return mapper.readValue(response.body(), GetClustersResponse.class).getClusters();
+    }
+
+    public long createSupplyCrossdockDraft(CreateSupplyCrossdockDraftRequest.ClusterInfoDto clusterInfo, DeliveryInfoDto deliveryInfo) throws IOException, InterruptedException {
+        CreateSupplyCrossdockDraftRequest request = new CreateSupplyCrossdockDraftRequest();
+
+        request.setClusterInfo(clusterInfo);
+        request.setDeliveryInfo(deliveryInfo);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_DRAFT_CREATE_CROSSDOCK.getFullUrl(apiHost),
+                request);
+        return mapper.readValue(response.body(), CreateSupplyCrossdockDraftResponse.class).getDraftId();
+    }
+    
 
 }
