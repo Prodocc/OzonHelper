@@ -6,7 +6,10 @@ import java.util.Optional;
 
 @Data
 public class Warehouse {
-    private String address;
-    private String name;
     private long id;
+    private String name;
+    private String address;
+    private long clusterId;
+
+
 }

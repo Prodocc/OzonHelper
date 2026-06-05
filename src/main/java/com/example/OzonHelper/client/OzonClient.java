@@ -1,14 +1,16 @@
 package com.example.OzonHelper.client;
 
 import com.example.OzonHelper.config.OzonStoreConfig;
+import com.example.OzonHelper.domain.TimeSlot;
+import com.example.OzonHelper.domain.Warehouse;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
-import com.example.OzonHelper.dto.response.supply.SupplyOrderContentDto;
+import com.example.OzonHelper.dto.response.fbo.SupplyOrderContentDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
-import com.example.OzonHelper.dto.request.supply.*;
-import com.example.OzonHelper.dto.response.supply.*;
+import com.example.OzonHelper.dto.request.fbo.*;
+import com.example.OzonHelper.dto.response.fbo.*;
 import com.example.OzonHelper.enums.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -156,17 +158,77 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetClustersResponse.class).getClusters();
     }
 
-    public long createSupplyCrossdockDraft(CreateSupplyCrossdockDraftRequest.ClusterInfoDto clusterInfo, DeliveryInfoDto deliveryInfo) throws IOException, InterruptedException {
+    public long createSupplyCrossdockDraft(long sku, int quantity, Warehouse warehouse) throws IOException, InterruptedException {
         CreateSupplyCrossdockDraftRequest request = new CreateSupplyCrossdockDraftRequest();
 
-        request.setClusterInfo(clusterInfo);
-        request.setDeliveryInfo(deliveryInfo);
+        CreateSupplyCrossdockDraftRequest.ClusterInfoDto clusterInfoDto = new CreateSupplyCrossdockDraftRequest.ClusterInfoDto();
+        SupplyItemsInfo items = new SupplyItemsInfo();
+
+        items.setSku(sku);
+        items.setQuantity(quantity);
+        clusterInfoDto.setItems(List.of(items));
+        clusterInfoDto.setMacrolocalClusterId(warehouse.getClusterId());
+
+        DeliveryInfoDto deliveryInfoDto = new DeliveryInfoDto();
+        DeliveryInfoDto.WarehouseDto warehouseInfo = new DeliveryInfoDto.WarehouseDto();
+
+        warehouseInfo.setId(warehouse.getId());
+        warehouseInfo.setWarehouseType(WarehouseType.CROSS_DOCK);
+        deliveryInfoDto.setWarehouseInfo(warehouseInfo);
+        deliveryInfoDto.setMethod(SupplyMethod.DROPOFF);
+
+        request.setClusterInfo(clusterInfoDto);
+        request.setDeliveryInfo(deliveryInfoDto);
 
         HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_DRAFT_CREATE_CROSSDOCK.getFullUrl(apiHost),
                 request);
+
         return mapper.readValue(response.body(), CreateSupplyCrossdockDraftResponse.class).getDraftId();
     }
-    
+
+    public DraftCreateStatus checkDraftCreateStatus(long draftId) throws IOException, InterruptedException {
+        SupplyDraftStatusRequest request = new SupplyDraftStatusRequest();
+        request.setDraftId(draftId);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_DRAFT_CREATE_STATUS.getFullUrl(apiHost),
+                request);
+
+        return mapper.readValue(response.body(), SupplyDraftStatusResponse.class).getStatus();
+    }
+    //TODO use cluster id as last param or warehouse
+
+    public SupplyTimeSlotInfoDto getAvailableTimeSlotsInfo(LocalDate from, LocalDate to, long draftId, SupplyType supplyType, long clusterId) throws IOException, InterruptedException {
+        GetSupplyTimeSlotInfoRequest request = new GetSupplyTimeSlotInfoRequest();
+        ClusterAndWarehouseInfoDto clusterAndWarehouseInfoDto = new ClusterAndWarehouseInfoDto();
+        clusterAndWarehouseInfoDto.setClusterId(clusterId);
+
+        request.setDateFrom(from.toString());
+        request.setDateTo(to.toString());
+        request.setSupplyType(supplyType);
+        request.setDraftId(draftId);
+        request.setClustersAndWarehousesInfo(List.of(clusterAndWarehouseInfoDto));
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_TIMESLOT_INFO.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetSupplyTimeslotInfoResponse.class).getTimeSlotInfo();
+    }
+
+    public long createSupply(long draftId, Warehouse warehouse, TimeSlot timeSlot, SupplyType supplyType) {
+        CreateSupplyRequest request = new CreateSupplyRequest();
+        ClusterAndWarehouseInfoDto clusterAndWarehouseInfoDto = new ClusterAndWarehouseInfoDto();
+        clusterAndWarehouseInfoDto.setClusterId(warehouse.getClusterId());
+        request.setDraftId(draftId);
+        request.setTimeslot(timeSlot);
+        request.setSupplyType(supplyType);
+
+
+        return 1;
+    }
+
 
 }

@@ -1,29 +1,31 @@
 package com.example.OzonHelper.domain.mapper;
 
-import com.example.OzonHelper.domain.Cluster;
-import com.example.OzonHelper.domain.Warehouse;
-import com.example.OzonHelper.dto.response.supply.ClusterDto;
-import com.example.OzonHelper.dto.response.supply.GetClustersResponse;
+import com.example.OzonHelper.domain.TimeSlot;
+import com.example.OzonHelper.domain.TimeSlotInterval;
+import com.example.OzonHelper.dto.response.fbo.SupplyTimeSlotInfoDto;
+import com.example.OzonHelper.dto.response.fbo.TimeSlotDto;
+import com.example.OzonHelper.dto.response.fbo.WarehouseTimeSlotByDaysDto;
+import com.example.OzonHelper.dto.response.fbo.WarehouseTimeSlotsDto;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SupplyOrderMapper {
 
-    public Cluster mapToDomain(ClusterDto clusterDto) {
-        Cluster cluster = new Cluster();
+    public TimeSlot mapToModel(WarehouseTimeSlotByDaysDto timeSlotsDtoByDays) {
+        TimeSlot timeSlot = new TimeSlot();
 
-        cluster.setId(clusterDto.getId());
-        cluster.setName(clusterDto.getName());
-        cluster.setMacrolocalClusterId(clusterDto.getMacrolocalClusterId());
+        timeSlot.setDateInTimeZone(LocalDate.parse(timeSlotsDtoByDays.getDateInTimezone()));
+        for (WarehouseTimeSlotByDaysDto.TimeSlotDto dto : timeSlotsDtoByDays.getTimeSlots()) {
+            LocalDateTime from = LocalDateTime.parse(dto.getFrom());
+            LocalDateTime to = LocalDateTime.parse(dto.getTo());
 
-        return cluster;
-    }
+            TimeSlotInterval interval = new TimeSlotInterval(from, to);
+            timeSlot.getIntervals().add(interval);
+        }
 
-    public Warehouse mapToDomain(GetClustersResponse.WarehouseDto warehouseDto){
-        Warehouse warehouse = new Warehouse();
-
-        warehouse.setId(warehouseDto.getId());
-
-        return warehouse;
+        return timeSlot;
     }
 }
