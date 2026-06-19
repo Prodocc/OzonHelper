@@ -1,29 +1,31 @@
 package com.example.OzonHelper.domain.mapper;
 
-import com.example.OzonHelper.domain.Timeslot;
-import com.example.OzonHelper.domain.Warehouse;
-import com.example.OzonHelper.dto.response.supply.TimeSlotDto;
-import com.example.OzonHelper.dto.response.supply.WarehouseDto;
+import com.example.OzonHelper.domain.TimeSlot;
+import com.example.OzonHelper.domain.TimeSlotInterval;
+import com.example.OzonHelper.dto.response.fbo.SupplyTimeSlotInfoDto;
+import com.example.OzonHelper.dto.response.fbo.TimeSlotDto;
+import com.example.OzonHelper.dto.response.fbo.WarehouseTimeSlotByDaysDto;
+import com.example.OzonHelper.dto.response.fbo.WarehouseTimeSlotsDto;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SupplyOrderMapper {
-//    public SupplyOrder toSupplyOrder(SupplyOrderInfoDto supplyInfo, SupplyOrderContentDto supplyContent, OzonClient client) {
-//        SupplyOrder supplyOrder = new SupplyOrder();
-//
-//        supplyOrder.setOrderNumber(supplyInfo.getOrderNumber());
-//        supplyOrder.setTimeslot(mapToDomain(supplyInfo.getTimeslotWrapper().getTimeslot()));
-//        supplyOrder.setSupplierDetails(client.getSupplierDetails());
-//        supplyOrder.setShippingWarehouse(mapToDomain(supplyInfo.getShippingWarehouse()));
-//        supplyOrder.setReceivingWarehouse(mapToDomain(supplyInfo.getSupplies().get(0).getReceivingWarehouse()));
-////        supplyOrder.setSupplies()
-//
-//        return supplyOrder;
-//    }
 
-    private Timeslot mapToDomain(TimeSlotDto dto) {
-        return new Timeslot(dto.getFrom(), dto.getTo());
-    }
+    public TimeSlot mapToModel(WarehouseTimeSlotByDaysDto timeSlotsDtoByDays) {
+        TimeSlot timeSlot = new TimeSlot();
 
-    private Warehouse mapToDomain(WarehouseDto dto) {
-        return new Warehouse(dto.getAddress(), dto.getName(), dto.getId());
+        timeSlot.setDateInTimeZone(LocalDate.parse(timeSlotsDtoByDays.getDateInTimezone()));
+        for (WarehouseTimeSlotByDaysDto.TimeSlotDto dto : timeSlotsDtoByDays.getTimeSlots()) {
+            LocalDateTime from = LocalDateTime.parse(dto.getFrom());
+            LocalDateTime to = LocalDateTime.parse(dto.getTo());
+
+            TimeSlotInterval interval = new TimeSlotInterval(from, to);
+            timeSlot.getIntervals().add(interval);
+        }
+
+        return timeSlot;
     }
 }

@@ -1,4 +1,4 @@
-package com.example.OzonHelper.dto.response.supply;
+package com.example.OzonHelper.dto.response.fbo;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

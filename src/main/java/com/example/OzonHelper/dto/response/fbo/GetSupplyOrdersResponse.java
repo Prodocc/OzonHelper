@@ -1,4 +1,4 @@
-package com.example.OzonHelper.dto.response.supply;
+package com.example.OzonHelper.dto.response.fbo;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,9 +6,11 @@ import lombok.Data;
 
 import java.util.List;
 
+//TODO choose name for this class
+
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class GetSupplyOrdersContentResponse {
-    @JsonProperty("items")
-    private List<SupplyOrderContentDto> items;
+public class GetSupplyOrdersResponse {
+    @JsonProperty("order_ids")
+    private List<String> supplyOrderIds;
 }

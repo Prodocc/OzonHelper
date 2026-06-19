@@ -1,4 +1,4 @@
-package com.example.OzonHelper.dto.request.supply;
+package com.example.OzonHelper.dto.request.fbo;
 
 import com.example.OzonHelper.enums.SupplyState;
 import com.fasterxml.jackson.annotation.JsonProperty;

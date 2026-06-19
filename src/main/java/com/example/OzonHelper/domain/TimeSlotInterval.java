@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @Data
-public class Timeslot {
+public class TimeSlotInterval {
     private LocalDateTime from;
     private LocalDateTime to;
 }

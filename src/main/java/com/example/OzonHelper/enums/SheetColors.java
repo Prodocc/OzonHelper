@@ -4,7 +4,7 @@ import com.google.api.services.sheets.v4.model.Color;
 import com.google.api.services.sheets.v4.model.Sheet;
 
 public enum SheetColors {
-    FBS_LIST_COLOR_DATE_COLOR(255, 217, 102);
+    FBS_LIST_DATE_COLOR(255, 217, 102);
 
     private final float red;
     private final float green;
