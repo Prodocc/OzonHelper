@@ -2,6 +2,7 @@ package com.example.OzonHelper.client;
 
 import com.example.OzonHelper.config.OzonStoreConfig;
 import com.example.OzonHelper.domain.TimeSlot;
+import com.example.OzonHelper.domain.TimeSlotInterval;
 import com.example.OzonHelper.domain.Warehouse;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
@@ -197,7 +198,7 @@ public class OzonClient implements MarketplaceClient {
 
         return mapper.readValue(response.body(), SupplyDraftStatusResponse.class).getStatus();
     }
-    //TODO use cluster id as last param or warehouse
+    //TODO use cluster id as last param or warehouse???
 
     public SupplyTimeSlotInfoDto getAvailableTimeSlotsInfo(LocalDate from, LocalDate to, long draftId, SupplyType supplyType, long clusterId) throws IOException, InterruptedException {
         GetSupplyTimeSlotInfoRequest request = new GetSupplyTimeSlotInfoRequest();
@@ -215,19 +216,31 @@ public class OzonClient implements MarketplaceClient {
                 request
         );
 
+        System.out.println(response.body());
+
         return mapper.readValue(response.body(), GetSupplyTimeslotInfoResponse.class).getTimeSlotInfo();
     }
 
-    public long createSupply(long draftId, Warehouse warehouse, TimeSlot timeSlot, SupplyType supplyType) {
+    public long createSupply(long draftId, Warehouse warehouse, TimeSlotInterval interval, SupplyType supplyType) throws IOException, InterruptedException {
         CreateSupplyRequest request = new CreateSupplyRequest();
         ClusterAndWarehouseInfoDto clusterAndWarehouseInfoDto = new ClusterAndWarehouseInfoDto();
         clusterAndWarehouseInfoDto.setClusterId(warehouse.getClusterId());
+        
+        request.setClusterAndWarehouseInfoDto(List.of(clusterAndWarehouseInfoDto));
         request.setDraftId(draftId);
-        request.setTimeslot(timeSlot);
+        request.setTimeslot(new CreateSupplyRequest.TimeSlotDto(interval.getFrom().toString(), interval.getTo().toString()));
         request.setSupplyType(supplyType);
 
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_CREATE.getFullUrl(apiHost),
+                request
+        );
 
-        return 1;
+        System.out.println(request.getTimeslot());
+
+        System.out.println(response.body());
+
+        return mapper.readValue(response.body(), CreateSupplyResponse.class).getDraftId();
     }
 
 

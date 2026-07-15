@@ -1,6 +1,6 @@
 package com.example.OzonHelper.enums;
 
-public enum SupplyCreateErrorMessage {
+public enum SupplyDraftCreateErrorMessage {
     UNSPECIFIED("UNSPECIFIED"),
     EMPTY_ITEMS_LIST("EMPTY_ITEMS_LIST"),
     ITEMS_COUNT_MORE_THAN_MAX("ITEMS_COUNT_MORE_THAN_MAX"),
@@ -21,7 +21,7 @@ public enum SupplyCreateErrorMessage {
 
     private final String apiValue;
 
-    SupplyCreateErrorMessage(String apiValue) {
+    SupplyDraftCreateErrorMessage(String apiValue) {
         this.apiValue = apiValue;
     }
     }

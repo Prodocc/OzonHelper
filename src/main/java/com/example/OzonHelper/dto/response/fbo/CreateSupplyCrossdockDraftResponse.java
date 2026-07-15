@@ -10,5 +10,5 @@ public class CreateSupplyCrossdockDraftResponse {
     @JsonProperty("draft_id")
     private long draftId;
     @JsonProperty("errors")
-    private List<SupplyCreateErrorDto> supplyCreateErrors;
+    private List<SupplyDraftCreateErrorDto> supplyCreateErrors;
 }
