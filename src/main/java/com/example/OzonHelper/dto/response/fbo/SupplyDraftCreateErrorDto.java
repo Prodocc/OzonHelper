@@ -1,18 +1,18 @@
 package com.example.OzonHelper.dto.response.fbo;
 
-import com.example.OzonHelper.enums.SupplyCreateErrorMessage;
-import com.example.OzonHelper.enums.SupplyCreateErrorReason;
+import com.example.OzonHelper.enums.SupplyDraftCreateErrorMessage;
+import com.example.OzonHelper.enums.SupplyDraftCreateErrorReason;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
-public class SupplyCreateErrorDto {
+public class SupplyDraftCreateErrorDto {
     @JsonProperty("error_message")
-    private SupplyCreateErrorMessage errorMessage;
+    private SupplyDraftCreateErrorMessage errorMessage;
     @JsonProperty("error_reasons")
-    private SupplyCreateErrorReason errorReason;
+    private SupplyDraftCreateErrorReason errorReason;
     @JsonProperty("items_validation")
     private List<ItemsValidationErrorDto> itemsValidationErrorDtos;
     @JsonProperty("macrolocal_cluster_ids")
