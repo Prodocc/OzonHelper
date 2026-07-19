@@ -6,9 +6,11 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class PostingsReportGetResponseResult {
+public class PostingsReportInfoResult {
     @JsonProperty("status")
     private String status;
     @JsonProperty("file")
     private String file;
+    @JsonProperty("error")
+    private String error;
 }

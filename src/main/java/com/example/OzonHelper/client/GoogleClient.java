@@ -1,12 +1,18 @@
 package com.example.OzonHelper.client;
 
+import com.example.OzonHelper.domain.StockItem;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.*;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
 
 @Component
 public class GoogleClient {
@@ -17,7 +23,6 @@ public class GoogleClient {
     }
 
     public void writeTable(List<List<Object>> rawData, String spreadSheetId, String range) throws IOException {
-        System.out.println(rawData);
         ValueRange body = new ValueRange().setValues(rawData);
 
         sheetsService.spreadsheets().values()
@@ -89,6 +94,89 @@ public class GoogleClient {
             }
         }
         return -1;
+    }
+
+    public void writeStockItemsByDay(String spreadsheetId, String sheetName, List<StockItem> items) throws Exception {
+        ZoneId zoneId = ZoneId.of("Europe/Moscow");
+        LocalDate today = LocalDate.now(zoneId);
+
+        // --- 1. Расчет столбцов для текущего дня ---
+        DayOfWeek dayOfWeek = today.getDayOfWeek();
+        int dayIndex = dayOfWeek.getValue() - 1; // Monday=0
+
+        // Для Пн (0): старт D (3), конец G (6). Для Вт (1): старт H (7), конец K (10)
+        int startColIndex = 3 + (dayIndex * 4);
+        int endColIndex = startColIndex + 3;
+
+        String startColLetter = colIndexToLetter(startColIndex);
+        String endColLetter = colIndexToLetter(endColIndex);
+
+        // --- 2. Читаем столбец B (SKU), чтобы найти номера строк ---
+        String skuRange = sheetName + "!B:B";
+        var skuResponse = sheetsService.spreadsheets().values()
+                .get(spreadsheetId, skuRange)
+                .execute();
+
+        List<List<Object>> skuValues = skuResponse.getValues();
+        if (skuValues == null || skuValues.isEmpty()) {
+            System.out.println("Столбец SKU пуст");
+            return;
+        }
+
+        // Мапа: SKU -> номер строки (1-based, т.к. в API строки начинаются с 1)
+        Map<String, Integer> skuToRow = new HashMap<>();
+        for (int i = 0; i < skuValues.size(); i++) {
+            List<Object> row = skuValues.get(i);
+            if (!row.isEmpty()) {
+                String sku = row.get(0).toString().trim();
+                // Пропускаем пустые и заголовок "SKU"
+                if (!sku.isEmpty() && !"SKU".equalsIgnoreCase(sku)) {
+                    skuToRow.put(sku, i + 1);
+                }
+            }
+        }
+
+        List<ValueRange> dataRanges = new ArrayList<>();
+
+        for (StockItem item : items) {
+            Integer rowNum = skuToRow.get(item.getSku());
+            if (rowNum == null) {
+                continue;
+            }
+
+            String range = sheetName + "!" + startColLetter + rowNum + ":" + endColLetter + rowNum;
+
+            List<Object> valuesRow = Arrays.asList(
+                    item.getSellsDayBefore(),
+                    item.getAvailableStock(),
+                    item.getInTransitStock(),
+                    item.getSellsThreeWeeksBefore()
+            );
+
+            ValueRange vr = new ValueRange()
+                    .setRange(range)
+                    .setValues(Collections.singletonList(valuesRow));
+
+            dataRanges.add(vr);
+        }
+
+        if (dataRanges.isEmpty()) {
+            System.out.println("Нет данных для записи в строки");
+            return;
+        }
+
+        BatchUpdateValuesRequest batchDataRequest = new BatchUpdateValuesRequest()
+                .setValueInputOption("RAW")
+                .setData(dataRanges);
+
+
+        sheetsService.spreadsheets()
+                .values()
+                .batchUpdate(spreadsheetId, batchDataRequest)
+                .execute();
+
+        System.out.println("Данные по товарам успешно записаны: " + dataRanges.size() + " строк");
+
     }
 
 }

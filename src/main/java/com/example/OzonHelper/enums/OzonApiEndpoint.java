@@ -11,7 +11,10 @@ public enum OzonApiEndpoint {
     SUPPLY_DRAFT_CREATE_STATUS("/v2/draft/create/info"),
     SUPPLY_TIMESLOT_INFO("/v2/draft/timeslot/info"),
     SUPPLY_CREATE("/v2/draft/supply/create"),
-    RETURN_GIVEOUT_GET_PDF("/v1/return/giveout/get-pdf");
+    RETURN_GIVEOUT_GET_PDF("/v1/return/giveout/get-pdf"),
+    GET_FBO_STOCKS("/v1/analytics/stocks"),
+    POSTINGS_REPORT_CREATE("/v1/report/postings/create"),
+    POSTINGS_REPORT_INFO("/v1/report/info");
 
     private final String path;
 

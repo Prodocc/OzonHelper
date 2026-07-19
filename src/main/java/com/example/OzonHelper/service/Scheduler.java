@@ -17,6 +17,7 @@ public class Scheduler {
 
     private final List<OzonClient> clients;
     private final FbsLogService fbsLogService;
+    private final ReportService reportService;
 
     @Scheduled(cron = "0 0 9 * * 1-5")
     public void fillFBSLogListMorning() throws IOException, InterruptedException {
@@ -30,6 +31,16 @@ public class Scheduler {
             fbsLogService.syncLogList();
         }
     }
+
+    @Scheduled(cron = "0 0 9 * * 1-7")
+    public void reportSheetUpdate() {
+        try {
+            reportService.updateReportTable();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     @Scheduled(cron = "0 0 14 * * 0-5")
     public void fillFBSLogListMidday() throws IOException, InterruptedException {
