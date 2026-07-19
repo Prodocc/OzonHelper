@@ -1,11 +1,16 @@
 package com.example.OzonHelper.client;
 
 import com.example.OzonHelper.config.OzonStoreConfig;
-import com.example.OzonHelper.domain.TimeSlot;
 import com.example.OzonHelper.domain.TimeSlotInterval;
 import com.example.OzonHelper.domain.Warehouse;
+import com.example.OzonHelper.dto.request.PostingsReportCreateFilter;
+import com.example.OzonHelper.dto.request.PostingsReportCreateRequest;
+import com.example.OzonHelper.dto.request.PostingsReportInfoRequest;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
+import com.example.OzonHelper.dto.response.PostingsReportCreateResponse;
+import com.example.OzonHelper.dto.response.PostingsReportInfoResponse;
+import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderContentDto;
@@ -14,6 +19,7 @@ import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
 import com.example.OzonHelper.enums.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,6 +35,7 @@ import java.util.List;
 
 //TODO: split from ozonclient to -> FBSClient/FBOClient
 
+@Data
 public class OzonClient implements MarketplaceClient {
 
     private static final String MARKETPLACE_NAME = "OZON";
@@ -225,7 +232,7 @@ public class OzonClient implements MarketplaceClient {
         CreateSupplyRequest request = new CreateSupplyRequest();
         ClusterAndWarehouseInfoDto clusterAndWarehouseInfoDto = new ClusterAndWarehouseInfoDto();
         clusterAndWarehouseInfoDto.setClusterId(warehouse.getClusterId());
-        
+
         request.setClusterAndWarehouseInfoDto(List.of(clusterAndWarehouseInfoDto));
         request.setDraftId(draftId);
         request.setTimeslot(new CreateSupplyRequest.TimeSlotDto(interval.getFrom().toString(), interval.getTo().toString()));
@@ -241,6 +248,57 @@ public class OzonClient implements MarketplaceClient {
         System.out.println(response.body());
 
         return mapper.readValue(response.body(), CreateSupplyResponse.class).getDraftId();
+    }
+
+    public List<StockDto> getFBOStocks(List<String> skus) throws IOException, InterruptedException {
+        if (skus.isEmpty()) return null;
+
+        GetStocksRequest request = new GetStocksRequest();
+        request.setSkus(skus);
+
+        HttpResponse<String> response;
+
+        do {
+            response = createJsonBodyAndSendRequest(
+                    OzonApiEndpoint.GET_FBO_STOCKS.getFullUrl(apiHost),
+                    request
+            );
+        } while (response.statusCode() != 200);
+
+        return mapper.readValue(response.body(), GetStocksResponse.class).getStocks();
+    }
+
+
+    public String createPostingsReportCode(String from, String to, List<String> deliverySchemas) throws IOException, InterruptedException {
+        PostingsReportCreateRequest request = new PostingsReportCreateRequest();
+        PostingsReportCreateFilter filter = new PostingsReportCreateFilter();
+
+        filter.setDateFrom(from);
+        filter.setDateTo(to);
+        filter.setDeliverySchema(deliverySchemas);
+
+        request.setFilter(filter);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.POSTINGS_REPORT_CREATE.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), PostingsReportCreateResponse.class).getResult().getCode();
+    }
+
+    public PostingsReportInfoResult getPostingsReportInfoByCode(String code) throws IOException, InterruptedException {
+        PostingsReportInfoRequest request = new PostingsReportInfoRequest();
+        request.setCode(code);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.POSTINGS_REPORT_INFO.getFullUrl(apiHost),
+                request
+        );
+
+        System.out.println(response);
+
+        return mapper.readValue(response.body(), PostingsReportInfoResponse.class).getResponseResult();
     }
 
 

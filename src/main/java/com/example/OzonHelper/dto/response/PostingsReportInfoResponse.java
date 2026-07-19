@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class PostingsReportGetResponse {
+public class PostingsReportInfoResponse {
 
     @JsonProperty("result")
-    private PostingsReportGetResponseResult responseResult;
+    private PostingsReportInfoResult responseResult;
 
 }

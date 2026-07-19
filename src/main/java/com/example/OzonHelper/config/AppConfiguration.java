@@ -13,6 +13,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.net.http.HttpClient;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableConfigurationProperties({StoreProperties.class})
@@ -39,17 +41,20 @@ public class AppConfiguration {
     }
 
     @Bean
-    public List<OzonClient> ozonClient(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
+    public Map<String, OzonClient> ozonClient(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
 
         List<OzonStoreConfig> ozonStores = storeProperties.getOzon();
 
-        return ozonStores.stream().map(
-                ozonStoreConfig -> new OzonClient(
-                        ozonStoreConfig,
-                        ozonApiHost,
-                        httpClient,
-                        objectMapper
-                )).toList();
+        return ozonStores.stream().
+                collect(Collectors.toMap(
+                        OzonStoreConfig::getClientId,
+                        ozonStoreConfig -> new OzonClient(
+                                ozonStoreConfig,
+                                ozonApiHost,
+                                httpClient,
+                                objectMapper
+                        )
+                ));
     }
 
 }

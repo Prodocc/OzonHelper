@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class PostingsRepostCreateResultData {
+public class PostingsRepostCreateResult {
 
     @JsonProperty("code")
     private String code;

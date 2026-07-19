@@ -15,4 +15,16 @@ public class GoogleUtils {
         gridRange.setEndRowIndex(rowEnd);
         return gridRange;
     }
+
+    public static String colIndexToLetter(int index) {
+        StringBuilder sb = new StringBuilder();
+        index++; // 1-based для конвертации
+        while (index > 0) {
+            index--;
+            int remainder = index % 26;
+            sb.insert(0, (char) ('A' + remainder));
+            index /= 26;
+        }
+        return sb.toString();
+    }
 }

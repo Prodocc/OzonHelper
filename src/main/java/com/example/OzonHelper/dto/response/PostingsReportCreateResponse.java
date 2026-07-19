@@ -9,5 +9,5 @@ import lombok.Data;
 public class PostingsReportCreateResponse {
 
     @JsonProperty("result")
-    private PostingsRepostCreateResultData result;
+    private PostingsRepostCreateResult result;
 }

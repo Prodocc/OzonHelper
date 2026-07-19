@@ -1,0 +1,325 @@
+package com.example.OzonHelper.service;
+
+import com.example.OzonHelper.client.GoogleClient;
+import com.example.OzonHelper.client.OzonClient;
+import com.example.OzonHelper.config.GoogleSheetsProperties;
+import com.example.OzonHelper.domain.StockItem;
+import com.example.OzonHelper.domain.mapper.ItemMapper;
+import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
+import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
+import com.example.OzonHelper.dto.response.fbo.PostingDto;
+import com.example.OzonHelper.dto.response.fbo.StockDto;
+import com.example.OzonHelper.parser.ReportCSVParser;
+import com.google.api.services.sheets.v4.Sheets;
+import com.opencsv.exceptions.CsvException;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ValueRange;
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
+
+@Service
+public class ReportService {
+    private final String REPORT_RANGE = "A1:AH1000";
+    private final int SKU_START_ROW_INDEX = 2;
+    private final String DAILY_REPORT_SPREADSHEET_KEY = "report-table-1";
+
+    private final Map<String, OzonClient> clients;
+    private final GoogleSheetsProperties sheetsProperties;
+    private final GoogleClient googleClient;
+    private final ItemMapper itemMapper;
+    private final ReportCSVParser csvParser;
+    private final PostingDtoMapper postingDtoMapper;
+
+    public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, ItemMapper itemMapper, ReportCSVParser csvParser, PostingDtoMapper postingDtoMapper) {
+        this.clients = clients;
+        this.sheetsProperties = sheetsProperties;
+        this.googleClient = googleClient;
+        this.itemMapper = itemMapper;
+        this.csvParser = csvParser;
+        this.postingDtoMapper = postingDtoMapper;
+    }
+
+    public void updateReportTable() throws Exception {
+        Map<String, List<String>> clientSkuMap = readClientIdsAndSkus();
+        int totalSkus = clientSkuMap.values().stream()
+                .mapToInt(List::size)
+                .sum();
+
+        System.out.println("Всего SKU из таблицы: " + totalSkus);
+
+        Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap);
+        System.out.println("База создана: " + baseStockMap.size() + " SKU из таблицы");
+
+        List<StockDto> stockDtos = new ArrayList<>();
+
+        //get and aggregate fbo stocks
+
+        clientSkuMap.forEach((clientId, skus) -> {
+            try {
+                List<StockDto> stocks = clients.get(clientId).getFBOStocks(skus);
+                stocks = aggregateStocks(stocks);
+
+                for (StockDto dto : stocks) {
+                    String cleanSku = dto.getSku().trim();
+                    StockItem item = baseStockMap.get(cleanSku);
+
+                    if (item != null) {
+                        item.setAvailableStock(dto.getAvailableStock());
+                        item.setInTransitStock(dto.getInTransitStock());
+                        // Если в StockDto есть article, можно скопировать и его
+                    }
+                }
+                Thread.sleep(2000);
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Ошибка получения остатков для клиента " + clientId + ": " + e.getMessage());
+            }
+        });
+
+        //get and aggregate postings
+
+        Instant from = LocalDate.now().minusWeeks(3).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant to = LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC);
+
+        List<String> deliverySchemas = List.of("fbo");
+
+        Map<String, Integer> totalSellsThreeWeeksBefore = new HashMap<>();
+        Map<String, Integer> totalSellsDayBefore = new HashMap<>();
+
+        clients.forEach((s, client) -> {
+            try {
+                String postingsReportCode = client.createPostingsReportCode(from.toString(), to.toString(), deliverySchemas);
+
+                PostingsReportInfoResult postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
+                int attempts = 0;
+                int maxAttempts = 20;
+
+                while (!postingsReportFile.getStatus().equals("success") && attempts < maxAttempts) {
+                    if ("failed".equals(postingsReportFile.getStatus())) {
+                        System.err.println("Отчет для магазина " + s + " не сформирован: " + postingsReportFile.getError());
+                        return; // Прерываем обработку этого магазина, но не всего цикла
+                    }
+                    Thread.sleep(5000);
+                    postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
+                    attempts++;
+                }
+
+                if (!"success".equals(postingsReportFile.getStatus())) {
+                    System.err.println("Таймаут ожидания отчета для магазина " + s);
+                    return;
+                }
+//
+                List<List<String>> postings = csvParser.downloadCSV(postingsReportFile.getFile()); // raw
+                if (postings == null || postings.isEmpty()) {
+                    System.err.println("Пустой отчет для магазина " + s);
+                    return;
+                }
+
+                postings = csvParser.filterCSV(postings, "Отменён"); // filtered
+
+                List<PostingDto> sellsThreeWeeksBefore = new ArrayList<>();
+                for (List<String> tmpPosting : postings) {
+                    sellsThreeWeeksBefore.add(postingDtoMapper.mapToModel(tmpPosting));
+                }
+
+                LocalDateTime startOfYesterday = LocalDate.now().minusDays(1).atStartOfDay();
+                LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+
+                List<PostingDto> sellsDayBefore = sellsThreeWeeksBefore.stream()
+                        .filter(postingDto -> {
+                            LocalDateTime acceptDate = postingDto.getAcceptDate();
+                            return !acceptDate.isBefore(startOfYesterday) && !acceptDate.isAfter(startOfToday);
+                        }).toList();
+
+                sellsThreeWeeksBefore = aggregatePostings(sellsThreeWeeksBefore);
+                sellsDayBefore = aggregatePostings(sellsDayBefore);
+
+                sellsThreeWeeksBefore.forEach(posting -> {
+                    String sku = posting.getSku().trim(); // trim на случай пробелов
+                    totalSellsThreeWeeksBefore.merge(sku, posting.getSells(), Integer::sum);
+                });
+
+                sellsDayBefore.forEach(posting -> {
+                    String sku = posting.getSku().trim();
+                    totalSellsDayBefore.merge(sku, posting.getSells(), Integer::sum);
+                });
+
+                //populate stockItem fields with sells
+
+
+            } catch (IOException | CsvException | InterruptedException e) {
+                System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
+            }
+        });
+
+        // 4. "ДОЛИВАЕМ" ПРОДАЖИ В БАЗОВЫЙ СПИСОК
+        totalSellsDayBefore.forEach((sku, sells) -> {
+            String cleanSku = sku.trim();
+            StockItem item = baseStockMap.get(cleanSku);
+            if (item != null) {
+                item.setSellsDayBefore(sells);
+            } else {
+                // Это значит, что товар был в продажах, но его нет в таблице.
+                // Можно логировать, но не ломать процесс.
+                System.out.println("SKU " + cleanSku + " был в продажах, но отсутствует в таблице.");
+            }
+        });
+
+        totalSellsThreeWeeksBefore.forEach((sku, sells) -> {
+            String cleanSku = sku.trim();
+            StockItem item = baseStockMap.get(cleanSku);
+            if (item != null) {
+                item.setSellsThreeWeeksBefore(sells);
+            }
+        });
+
+        // 5. Превращаем карту обратно в список (порядок сохранится благодаря LinkedHashMap)
+        List<StockItem> resultList = new ArrayList<>(baseStockMap.values());
+
+        System.out.println("Итоговый список для записи: " + resultList.size());
+
+        resultList.forEach(System.out::println);
+
+        String rangeForToday = getRangeForToday();
+        List<List<Object>> date = new ArrayList<>();
+        date.add(List.of(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
+
+        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
+        String sheetName = "Лист1";
+
+        googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
+
+        googleClient.writeStockItemsByDay(spreadSheetId, sheetName, resultList); // write data
+
+    }
+
+    private static Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
+        Map<String, StockItem> baseStockMap = new LinkedHashMap<>();
+
+        for (List<String> skus : clientSkuMap.values()) {
+            for (String rawSku : skus) {
+                String cleanSku = rawSku.trim();
+                if (baseStockMap.containsKey(cleanSku)) continue; // защита от дублей
+
+                StockItem item = new StockItem();
+                item.setSku(cleanSku);
+                item.setAvailableStock(0);
+                item.setInTransitStock(0);
+                item.setSellsDayBefore(0);
+                item.setSellsThreeWeeksBefore(0);
+                // Заполни остальные поля дефолтными значениями, если нужно
+
+                baseStockMap.put(cleanSku, item);
+            }
+        }
+        return baseStockMap;
+    }
+
+    public Map<String, List<String>> readClientIdsAndSkus() throws IOException {
+        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
+
+        List<List<Object>> rawData = googleClient.fetchFreshData(spreadSheetId, REPORT_RANGE);
+
+        Map<String, List<String>> clientSkuMap = new HashMap<>();
+
+        for (int i = SKU_START_ROW_INDEX; i < rawData.size(); i++) {
+            List<Object> list = rawData.get(i);
+            if (!list.isEmpty()) {
+                String clientId = list.get(0).toString();
+                String sku = list.get(1).toString();
+                if (!clientSkuMap.containsKey(clientId)) {
+                    List<String> skus = new ArrayList<>();
+                    skus.add(sku);
+                    clientSkuMap.put(clientId, skus);
+                } else {
+                    clientSkuMap.get(clientId).add(sku);
+                }
+            }
+
+        }
+        return clientSkuMap;
+    }
+
+
+    public List<PostingDto> aggregatePostings(List<PostingDto> postings) {
+        Map<String, Integer> sumBySku = postings.stream()
+                .collect(Collectors.toMap(
+                        PostingDto::getSku,
+                        PostingDto::getSells,
+                        Integer::sum
+                ));
+
+
+        LinkedHashMap<String, PostingDto> representativeBySku = postings.stream()
+                .collect(Collectors.toMap(
+                        PostingDto::getSku,
+                        p -> p,
+                        (first, second) -> first,
+                        LinkedHashMap::new
+                ));
+
+        return representativeBySku.values().stream()
+                .map(p -> {
+                    PostingDto merged = new PostingDto();
+                    merged.setSku(p.getSku());
+                    merged.setArticle(p.getArticle());
+                    merged.setAcceptDate(p.getAcceptDate());
+                    merged.setSells(sumBySku.getOrDefault(p.getSku(), 0));
+                    return merged;
+                }).toList();
+    }
+
+    public List<StockDto> aggregateStocks(List<StockDto> stocks) {
+        return stocks.stream()
+                .collect(Collectors.toMap(
+                        StockDto::getArticle,
+                        stock -> {
+                            StockDto stockDto = new StockDto();
+                            stockDto.setSku(stock.getSku());
+                            stockDto.setArticle(stock.getArticle());
+                            stockDto.setAvailableStock(stock.getAvailableStock());
+                            stockDto.setInSupplyStock(stock.getInSupplyStock());
+                            stockDto.setInTransitStock(stock.getInTransitStock());
+                            stockDto.setValidStock(stock.getValidStock());
+                            return stockDto;
+                        },
+                        (first, second) -> {
+                            StockDto stockDto = new StockDto();
+                            stockDto.setSku(first.getSku());
+                            stockDto.setArticle(first.getArticle());
+                            stockDto.setAvailableStock(first.getAvailableStock() + second.getAvailableStock());
+                            stockDto.setInSupplyStock(first.getInSupplyStock() + second.getInSupplyStock());
+                            stockDto.setInTransitStock(first.getInTransitStock() + second.getInTransitStock());
+                            stockDto.setValidStock(first.getValidStock() + second.getValidStock());
+                            return stockDto;
+                        },
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .toList();
+    }
+
+    public String getRangeForToday() {
+        DayOfWeek dayOfWeek = LocalDate.now().getDayOfWeek();
+        int dayIndex = dayOfWeek.getValue() - 1; // Monday=0, Sunday=6
+
+        int startColIndex = 3 + dayIndex * 4; // D=3
+        int endColIndex = startColIndex + 3;
+
+        String startCol = colIndexToLetter(startColIndex);
+        String endCol = colIndexToLetter(endColIndex);
+
+        // Возвращаем диапазон для всей колонки (без номера строки)
+        return startCol + ":" + endCol;
+    }
+
+}

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class PostingsReportCreateFilter {
@@ -12,18 +14,5 @@ public class PostingsReportCreateFilter {
     @JsonProperty("processed_at_to")
     private String dateTo;
     @JsonProperty("delivery_schema")
-    private String[] deliverySchema;
-    @JsonProperty("sku")
-    private String[] sku;
-    @JsonProperty("cancel_reason_id")
-    private String[] cancelReasonId;
-    @JsonProperty("offer_id")
-    private String offerId;
-    @JsonProperty("status_alias")
-    private String[] statusAlias;
-    @JsonProperty("statuses")
-    private String[] statuses;
-    @JsonProperty("title")
-    private String title;
-
+    private List<String> deliverySchema;
 }
