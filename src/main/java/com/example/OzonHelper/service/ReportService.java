@@ -4,24 +4,18 @@ import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.StockItem;
-import com.example.OzonHelper.domain.mapper.ItemMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
 import com.example.OzonHelper.parser.ReportCSVParser;
-import com.google.api.services.sheets.v4.Sheets;
 import com.opencsv.exceptions.CsvException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ValueRange;
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
@@ -35,15 +29,13 @@ public class ReportService {
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
     private final GoogleClient googleClient;
-    private final ItemMapper itemMapper;
     private final ReportCSVParser csvParser;
     private final PostingDtoMapper postingDtoMapper;
 
-    public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, ItemMapper itemMapper, ReportCSVParser csvParser, PostingDtoMapper postingDtoMapper) {
+    public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, ReportCSVParser csvParser, PostingDtoMapper postingDtoMapper) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
-        this.itemMapper = itemMapper;
         this.csvParser = csvParser;
         this.postingDtoMapper = postingDtoMapper;
     }
@@ -59,8 +51,6 @@ public class ReportService {
         Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap);
         System.out.println("База создана: " + baseStockMap.size() + " SKU из таблицы");
 
-        List<StockDto> stockDtos = new ArrayList<>();
-
         //get and aggregate fbo stocks
 
         clientSkuMap.forEach((clientId, skus) -> {
@@ -73,8 +63,8 @@ public class ReportService {
                     StockItem item = baseStockMap.get(cleanSku);
 
                     if (item != null) {
-                        item.setAvailableStock(dto.getAvailableStock());
-                        item.setInTransitStock(dto.getInTransitStock());
+                        item.setAvailableStock(dto.getAvailableStock() + dto.getValidStock());
+                        item.setInTransitStock(dto.getInTransitStock() + dto.getInSupplyStock());
                         // Если в StockDto есть article, можно скопировать и его
                     }
                 }
@@ -153,7 +143,6 @@ public class ReportService {
                 });
 
                 //populate stockItem fields with sells
-
 
             } catch (IOException | CsvException | InterruptedException e) {
                 System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
@@ -234,7 +223,7 @@ public class ReportService {
             List<Object> list = rawData.get(i);
             if (!list.isEmpty()) {
                 String clientId = list.get(0).toString();
-                String sku = list.get(1).toString();
+                String sku = list.get(2).toString();
                 if (!clientSkuMap.containsKey(clientId)) {
                     List<String> skus = new ArrayList<>();
                     skus.add(sku);
@@ -312,7 +301,7 @@ public class ReportService {
         DayOfWeek dayOfWeek = LocalDate.now().getDayOfWeek();
         int dayIndex = dayOfWeek.getValue() - 1; // Monday=0, Sunday=6
 
-        int startColIndex = 3 + dayIndex * 4; // D=3
+        int startColIndex = 4 + dayIndex * 4; // E=4
         int endColIndex = startColIndex + 3;
 
         String startCol = colIndexToLetter(startColIndex);
