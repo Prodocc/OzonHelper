@@ -42,17 +42,11 @@ public class ReportService {
 
     public void updateReportTable() throws Exception {
         Map<String, List<String>> clientSkuMap = readClientIdsAndSkus();
-        int totalSkus = clientSkuMap.values().stream()
-                .mapToInt(List::size)
-                .sum();
 
-        System.out.println("Всего SKU из таблицы: " + totalSkus);
-
-        Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap);
+        Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap); // (sku, stockItem)
         System.out.println("База создана: " + baseStockMap.size() + " SKU из таблицы");
 
         //get and aggregate fbo stocks
-
         clientSkuMap.forEach((clientId, skus) -> {
             try {
                 List<StockDto> stocks = clients.get(clientId).getFBOStocks(skus);
@@ -63,9 +57,9 @@ public class ReportService {
                     StockItem item = baseStockMap.get(cleanSku);
 
                     if (item != null) {
+                        item.setArticle(dto.getArticle());
                         item.setAvailableStock(dto.getAvailableStock() + dto.getValidStock());
                         item.setInTransitStock(dto.getInTransitStock() + dto.getInSupplyStock());
-                        // Если в StockDto есть article, можно скопировать и его
                     }
                 }
                 Thread.sleep(2000);
@@ -75,7 +69,6 @@ public class ReportService {
         });
 
         //get and aggregate postings
-
         Instant from = LocalDate.now().minusWeeks(3).atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC);
 
@@ -129,9 +122,6 @@ public class ReportService {
                             return !acceptDate.isBefore(startOfYesterday) && !acceptDate.isAfter(startOfToday);
                         }).toList();
 
-                sellsThreeWeeksBefore = aggregatePostings(sellsThreeWeeksBefore);
-                sellsDayBefore = aggregatePostings(sellsDayBefore);
-
                 sellsThreeWeeksBefore.forEach(posting -> {
                     String sku = posting.getSku().trim(); // trim на случай пробелов
                     totalSellsThreeWeeksBefore.merge(sku, posting.getSells(), Integer::sum);
@@ -142,7 +132,8 @@ public class ReportService {
                     totalSellsDayBefore.merge(sku, posting.getSells(), Integer::sum);
                 });
 
-                //populate stockItem fields with sells
+                System.out.println(totalSellsDayBefore);
+
 
             } catch (IOException | CsvException | InterruptedException e) {
                 System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
@@ -218,12 +209,14 @@ public class ReportService {
         List<List<Object>> rawData = googleClient.fetchFreshData(spreadSheetId, REPORT_RANGE);
 
         Map<String, List<String>> clientSkuMap = new HashMap<>();
+        int clientIdColumnIndex = 0;
+        int skuColumnIndex = 2;
 
         for (int i = SKU_START_ROW_INDEX; i < rawData.size(); i++) {
             List<Object> list = rawData.get(i);
             if (!list.isEmpty()) {
-                String clientId = list.get(0).toString();
-                String sku = list.get(2).toString();
+                String clientId = list.get(clientIdColumnIndex).toString();
+                String sku = list.get(skuColumnIndex).toString();
                 if (!clientSkuMap.containsKey(clientId)) {
                     List<String> skus = new ArrayList<>();
                     skus.add(sku);
@@ -235,35 +228,6 @@ public class ReportService {
 
         }
         return clientSkuMap;
-    }
-
-
-    public List<PostingDto> aggregatePostings(List<PostingDto> postings) {
-        Map<String, Integer> sumBySku = postings.stream()
-                .collect(Collectors.toMap(
-                        PostingDto::getSku,
-                        PostingDto::getSells,
-                        Integer::sum
-                ));
-
-
-        LinkedHashMap<String, PostingDto> representativeBySku = postings.stream()
-                .collect(Collectors.toMap(
-                        PostingDto::getSku,
-                        p -> p,
-                        (first, second) -> first,
-                        LinkedHashMap::new
-                ));
-
-        return representativeBySku.values().stream()
-                .map(p -> {
-                    PostingDto merged = new PostingDto();
-                    merged.setSku(p.getSku());
-                    merged.setArticle(p.getArticle());
-                    merged.setAcceptDate(p.getAcceptDate());
-                    merged.setSells(sumBySku.getOrDefault(p.getSku(), 0));
-                    return merged;
-                }).toList();
     }
 
     public List<StockDto> aggregateStocks(List<StockDto> stocks) {
