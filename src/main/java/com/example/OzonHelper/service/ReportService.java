@@ -24,6 +24,8 @@ import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
 public class ReportService {
     private final String REPORT_RANGE = "A1:AH1000";
     private final int SKU_START_ROW_INDEX = 2;
+    private final int CLIENT_ID_COLUMN_INDEX = 0;
+    private final int SKU_COLUMN_INDEX = 2;
     private final String DAILY_REPORT_SPREADSHEET_KEY = "report-table-1";
 
     private final Map<String, OzonClient> clients;
@@ -41,8 +43,12 @@ public class ReportService {
     }
 
     public void updateReportTable() throws Exception {
-        Map<String, List<String>> clientSkuMap = readClientIdsAndSkus();
+        // get sku
+        Map<String, List<String>> clientSkuMap = readClientIdAndSkus();
 
+        // get stock data
+        // get postings data
+        // write data
         Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap); // (sku, stockItem)
         System.out.println("База создана: " + baseStockMap.size() + " SKU из таблицы");
 
@@ -132,9 +138,6 @@ public class ReportService {
                     totalSellsDayBefore.merge(sku, posting.getSells(), Integer::sum);
                 });
 
-                System.out.println(totalSellsDayBefore);
-
-
             } catch (IOException | CsvException | InterruptedException e) {
                 System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
             }
@@ -181,7 +184,7 @@ public class ReportService {
 
     }
 
-    private static Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
+    private Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
         Map<String, StockItem> baseStockMap = new LinkedHashMap<>();
 
         for (List<String> skus : clientSkuMap.values()) {
@@ -203,29 +206,34 @@ public class ReportService {
         return baseStockMap;
     }
 
-    public Map<String, List<String>> readClientIdsAndSkus() throws IOException {
+    public Map<String, List<String>> readClientIdAndSkus() throws IOException {
         String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
 
         List<List<Object>> rawData = googleClient.fetchFreshData(spreadSheetId, REPORT_RANGE);
 
+        return mapClientIdsToSkus(rawData);
+    }
+
+    Map<String, List<String>> mapClientIdsToSkus(List<List<Object>> rawData) {
         Map<String, List<String>> clientSkuMap = new HashMap<>();
-        int clientIdColumnIndex = 0;
-        int skuColumnIndex = 2;
 
         for (int i = SKU_START_ROW_INDEX; i < rawData.size(); i++) {
-            List<Object> list = rawData.get(i);
-            if (!list.isEmpty()) {
-                String clientId = list.get(clientIdColumnIndex).toString();
-                String sku = list.get(skuColumnIndex).toString();
-                if (!clientSkuMap.containsKey(clientId)) {
-                    List<String> skus = new ArrayList<>();
-                    skus.add(sku);
-                    clientSkuMap.put(clientId, skus);
-                } else {
-                    clientSkuMap.get(clientId).add(sku);
-                }
+            List<Object> row = rawData.get(i);
+
+            if (row.size() <= SKU_COLUMN_INDEX) {
+                continue;
             }
 
+            String clientId = row.get(CLIENT_ID_COLUMN_INDEX).toString().trim();
+            String sku = row.get(SKU_COLUMN_INDEX).toString().trim();
+
+            if (clientId.isEmpty() || sku.isEmpty()) {
+                continue;
+            }
+
+            clientSkuMap
+                    .computeIfAbsent(clientId, ignored -> new ArrayList<>())
+                    .add(sku);
         }
         return clientSkuMap;
     }
