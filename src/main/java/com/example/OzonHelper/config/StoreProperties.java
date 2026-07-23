@@ -8,7 +8,6 @@ import java.util.List;
 @Data
 @ConfigurationProperties(prefix = "stores")
 public class StoreProperties {
-
     private List<OzonStoreConfig> ozon;
     private List<WbStoreConfig> wb;
 }
