@@ -8,6 +8,7 @@ import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
+import com.example.OzonHelper.exceptions.ReportCreatingException;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.opencsv.exceptions.CsvException;
 import org.springframework.stereotype.Service;
@@ -55,19 +56,10 @@ public class ReportService {
         //get and aggregate fbo stocks
         clientSkuMap.forEach((clientId, skus) -> {
             try {
-                List<StockDto> stocks = clients.get(clientId).getFBOStocks(skus);
-                stocks = aggregateStocks(stocks);
+                List<StockDto> stocks = loadAggregatedStocks(clientId, skus);
 
-                for (StockDto dto : stocks) {
-                    String cleanSku = dto.getSku().trim();
-                    StockItem item = baseStockMap.get(cleanSku);
+                applyStocks(baseStockMap, stocks);
 
-                    if (item != null) {
-                        item.setArticle(dto.getArticle());
-                        item.setAvailableStock(dto.getAvailableStock() + dto.getValidStock());
-                        item.setInTransitStock(dto.getInTransitStock() + dto.getInSupplyStock());
-                    }
-                }
                 Thread.sleep(2000);
             } catch (IOException | InterruptedException e) {
                 System.err.println("Ошибка получения остатков для клиента " + clientId + ": " + e.getMessage());
@@ -85,28 +77,9 @@ public class ReportService {
 
         clients.forEach((s, client) -> {
             try {
-                String postingsReportCode = client.createPostingsReportCode(from.toString(), to.toString(), deliverySchemas);
+                String postingsReportFile = getReadyPostingsReport(from, to, deliverySchemas, client);
 
-                PostingsReportInfoResult postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
-                int attempts = 0;
-                int maxAttempts = 20;
-
-                while (!postingsReportFile.getStatus().equals("success") && attempts < maxAttempts) {
-                    if ("failed".equals(postingsReportFile.getStatus())) {
-                        System.err.println("Отчет для магазина " + s + " не сформирован: " + postingsReportFile.getError());
-                        return; // Прерываем обработку этого магазина, но не всего цикла
-                    }
-                    Thread.sleep(5000);
-                    postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
-                    attempts++;
-                }
-
-                if (!"success".equals(postingsReportFile.getStatus())) {
-                    System.err.println("Таймаут ожидания отчета для магазина " + s);
-                    return;
-                }
-//
-                List<List<String>> postings = csvParser.downloadCSV(postingsReportFile.getFile()); // raw
+                List<List<String>> postings = csvParser.downloadCSV(postingsReportFile); // raw
                 if (postings == null || postings.isEmpty()) {
                     System.err.println("Пустой отчет для магазина " + s);
                     return;
@@ -138,12 +111,13 @@ public class ReportService {
                     totalSellsDayBefore.merge(sku, posting.getSells(), Integer::sum);
                 });
 
-            } catch (IOException | CsvException | InterruptedException e) {
+            } catch (IOException | CsvException e) {
                 System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
+            } catch (ReportCreatingException | InterruptedException e) {
+                throw new RuntimeException(e);
             }
         });
 
-        // 4. "ДОЛИВАЕМ" ПРОДАЖИ В БАЗОВЫЙ СПИСОК
         totalSellsDayBefore.forEach((sku, sells) -> {
             String cleanSku = sku.trim();
             StockItem item = baseStockMap.get(cleanSku);
@@ -282,4 +256,44 @@ public class ReportService {
         return startCol + ":" + endCol;
     }
 
+    private void applyStocks(Map<String, StockItem> baseStockMap, List<StockDto> stocks) {
+        for (StockDto dto : stocks) {
+            String cleanSku = dto.getSku().trim();
+            StockItem item = baseStockMap.get(cleanSku);
+
+            if (item != null) {
+                item.setArticle(dto.getArticle());
+                item.setAvailableStock(dto.getAvailableStock() + dto.getValidStock());
+                item.setInTransitStock(dto.getInTransitStock() + dto.getInSupplyStock());
+            }
+        }
+    }
+
+    private List<StockDto> loadAggregatedStocks(String clientId, List<String> skus) throws IOException, InterruptedException {
+        return aggregateStocks(clients.get(clientId).getFBOStocks(skus));
+    }
+
+    private String getReadyPostingsReport(Instant from, Instant to, List<String> deliverySchemas, OzonClient client) throws ReportCreatingException, IOException, InterruptedException {
+        String postingsReportCode = client.createPostingsReportCode(from.toString(), to.toString(), deliverySchemas);
+
+        PostingsReportInfoResult postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
+        int attempts = 0;
+        int maxAttempts = 20;
+
+        while (!"success".equals(postingsReportFile.getStatus()) && attempts < maxAttempts) {
+            if ("failed".equals(postingsReportFile.getStatus())) {
+                System.err.println("Отчет для магазина " + "тут будет имя магазина" + " не сформирован: " + postingsReportFile.getError());
+                throw new ReportCreatingException(client.getClientId(), "creation error");
+            }
+            Thread.sleep(5000);
+            postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
+            attempts++;
+        }
+
+        if (!"success".equals(postingsReportFile.getStatus())) {
+            System.err.println("Таймаут ожидания отчета для магазина " + "тут будет имя магазина");
+            throw new ReportCreatingException(client.getClientId(), "timeout");
+        }
+        return postingsReportFile.getFile();
+    }
 }
