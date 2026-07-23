@@ -3,18 +3,23 @@ package com.example.OzonHelper.service;
 import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
+import com.example.OzonHelper.domain.StockItem;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
+import com.example.OzonHelper.dto.response.fbo.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 import static org.mockito.Mockito.*;
 
 public class ReportServiceTest {
@@ -34,7 +39,7 @@ public class ReportServiceTest {
         googleClient = mock(GoogleClient.class);
         properties = mock(GoogleSheetsProperties.class);
         csvParser = mock(ReportCSVParser.class);
-        dtoMapper = mock(PostingDtoMapper.class);
+        dtoMapper = new PostingDtoMapper();
         this.reportService = new ReportService(
                 clients,
                 properties,
@@ -45,12 +50,6 @@ public class ReportServiceTest {
 
     @Test
     public void updateReportTable() throws Exception {
-        //set up
-//        Map<String, List<String>> clientSkuMap = Map.of(
-//                "client-1", List.of("1_1", "1_2", "1_3"),
-//                "client-2", List.of("2_1", "2_2")
-//        );
-
         List<List<Object>> rawData = List.of(
                 List.of("", "", ""),
                 List.of("", "", ""),
@@ -91,11 +90,40 @@ public class ReportServiceTest {
 
         when(csvParser.downloadCSV(linkForClientOne.getFile())).thenReturn(postingsForClientOne);
         when(csvParser.downloadCSV(linkForClientTwo.getFile())).thenReturn(postingsForClientTwo);
+        when(csvParser.filterCSV(postingsForClientOne, "Отменён")).thenReturn(postingsForClientOne);
+        when(csvParser.filterCSV(postingsForClientTwo, "Отменён")).thenReturn(postingsForClientTwo);
+        doNothing().when(googleClient).writeTable(anyList(), anyString(), anyString());
+        doNothing().when(googleClient).writeStockItemsByDay(anyString(), anyString(), anyList());
+
+        ArgumentCaptor<List<StockItem>> captor = ArgumentCaptor.forClass(List.class);
 
         //execute
-
         reportService.updateReportTable();
         //assert
+
+        verify(googleClient).writeStockItemsByDay(
+                any(),
+                anyString(),
+                captor.capture()
+        );
+
+        List<StockItem> actual = captor.getValue();
+        assertThat(actual).
+                extracting(
+                        StockItem::getSku,
+                        StockItem::getArticle,
+                        StockItem::getAvailableStock,
+                        StockItem::getInTransitStock,
+                        StockItem::getSellsDayBefore,
+                        StockItem::getSellsThreeWeeksBefore
+                )
+                .containsExactlyInAnyOrder(
+                        tuple("1_1", "1_1", 2, 2, 1, 1),
+                        tuple("1_2", "2_1", 4, 4, 0, 2),
+                        tuple("1_3", "3_1", 6, 6, 0, 3),
+                        tuple("2_1", "1_2", 2, 2, 1, 1),
+                        tuple("2_2", "2_2", 4, 4, 0, 2)
+                );
     }
 
 
@@ -127,7 +155,6 @@ public class ReportServiceTest {
     // check what if new sku in postings/stocks but there are no sku in start table
 
     private List<StockDto> generateStocksForClient(String clientId, int amount) {
-        Random rnd = new Random();
         List<StockDto> stocks = new ArrayList<>();
         String clientPostfix = clientId.substring(clientId.length() - 1);
 
@@ -136,10 +163,10 @@ public class ReportServiceTest {
 
             stock.setSku(clientPostfix + "_" + i);
             stock.setArticle(i + "_" + clientPostfix);
-            stock.setAvailableStock(rnd.nextInt(0, 100));
-            stock.setInSupplyStock(rnd.nextInt(0, 100));
-            stock.setInTransitStock(rnd.nextInt(0, 100));
-            stock.setValidStock(rnd.nextInt(0, 100));
+            stock.setAvailableStock(i);
+            stock.setInSupplyStock(i);
+            stock.setInTransitStock(i);
+            stock.setValidStock(i);
 
             stocks.add(stock);
         }
@@ -147,7 +174,6 @@ public class ReportServiceTest {
     }
 
     private List<List<String>> generatePostingsForClient(String clientId, int amount) {
-        Random rnd = new Random();
         List<List<String>> postings = new ArrayList<>();
         String clientPostfix = clientId.substring(clientId.length() - 1);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -156,14 +182,15 @@ public class ReportServiceTest {
             List<String> posting = new ArrayList<>(Collections.nCopies(20, null));
 
             posting.set(10, clientPostfix + "_" + i); // set sku
-            posting.set(18, String.valueOf(rnd.nextInt(0, 50))); //set sells
+            posting.set(18, String.valueOf(i)); //set sells
             posting.set(11, i + "_" + clientPostfix); // set article
-            posting.set(2, LocalDateTime.now().minusDays(rnd.nextInt(1, 30)).format(formatter)); // set accept date
+            posting.set(2, LocalDateTime.now().minusDays(i).format(formatter)); // set accept date
 
             postings.add(posting);
         }
 
         return postings;
     }
+
 
 }

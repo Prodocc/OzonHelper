@@ -198,7 +198,6 @@ public class ReportService {
                 item.setInTransitStock(0);
                 item.setSellsDayBefore(0);
                 item.setSellsThreeWeeksBefore(0);
-                // Заполни остальные поля дефолтными значениями, если нужно
 
                 baseStockMap.put(cleanSku, item);
             }
