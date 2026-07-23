@@ -6,11 +6,19 @@ import com.example.OzonHelper.domain.Warehouse;
 import com.example.OzonHelper.dto.request.PostingsReportCreateFilter;
 import com.example.OzonHelper.dto.request.PostingsReportCreateRequest;
 import com.example.OzonHelper.dto.request.PostingsReportInfoRequest;
+import com.example.OzonHelper.dto.request.chat.GetChatHistoryFilter;
+import com.example.OzonHelper.dto.request.chat.GetChatHistoryRequest;
+import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
+import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
 import com.example.OzonHelper.dto.response.PostingsReportCreateResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
+import com.example.OzonHelper.dto.response.chat.ChatDto;
+import com.example.OzonHelper.dto.response.chat.GetChatHistoryResponse;
+import com.example.OzonHelper.dto.response.chat.GetChatListResponse;
+import com.example.OzonHelper.dto.response.chat.MessageDto;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderContentDto;
@@ -32,8 +40,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
-//TODO: split from ozonclient to -> FBSClient/FBOClient
+//TODO: split from ozonclient to -> FBSClient/FBOClient maybe
 
 @Data
 public class OzonClient implements MarketplaceClient {
@@ -41,6 +50,9 @@ public class OzonClient implements MarketplaceClient {
     private static final String MARKETPLACE_NAME = "OZON";
     private final int SUPPLY_ORDERS_MAX_LIMIT = 100;
     private final int FBS_POSTING_MAX_LIMIT = 100;
+    private final int CHATS_LIST_LIMIT = 100;
+    private final int CHAT_HISTORY_LIMIT = 1000;
+    private final Map<String, String> chatNameIdMap;
     private final String clientId;
     private final String apiKey;
     private final String apiHost;
@@ -56,8 +68,8 @@ public class OzonClient implements MarketplaceClient {
         this.clientId = config.getClientId();
         this.apiKey = config.getApiKey();
         this.supplierDetails = config.getName();
+        this.chatNameIdMap = config.getChatNameIdMap();
     }
-
 
     @Override
     public List<OzonPostingRow> getPostings(LocalDate dateFrom, LocalDate dateTo, String[] skus, String... delivery_schema) throws IOException, InterruptedException {
@@ -299,6 +311,39 @@ public class OzonClient implements MarketplaceClient {
         System.out.println(response);
 
         return mapper.readValue(response.body(), PostingsReportInfoResponse.class).getResponseResult();
+    }
+
+    public List<ChatDto> getChats() throws IOException, InterruptedException {
+        GetChatListRequest request = new GetChatListRequest();
+        GetChatListFilter filter = new GetChatListFilter();
+
+        filter.setStatus(ChatStatus.CHAT_STATUS_OPENED);
+        filter.setUnread(false);
+
+        request.setFilter(filter);
+        request.setLimit(CHATS_LIST_LIMIT);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.CHATS_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetChatListResponse.class).getChats();
+    }
+
+    public List<MessageDto> getChatHistory(String chatId, String direction, int limit) throws IOException, InterruptedException {
+        GetChatHistoryRequest request = new GetChatHistoryRequest();
+
+        request.setChatId(chatId);
+        request.setSortDirection(direction);
+        request.setLimit(limit);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.CHAT_HISTORY.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetChatHistoryResponse.class).getMessages();
     }
 
 

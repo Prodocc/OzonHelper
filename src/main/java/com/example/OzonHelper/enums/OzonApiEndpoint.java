@@ -14,7 +14,9 @@ public enum OzonApiEndpoint {
     RETURN_GIVEOUT_GET_PDF("/v1/return/giveout/get-pdf"),
     GET_FBO_STOCKS("/v1/analytics/stocks"),
     POSTINGS_REPORT_CREATE("/v1/report/postings/create"),
-    POSTINGS_REPORT_INFO("/v1/report/info");
+    POSTINGS_REPORT_INFO("/v1/report/info"),
+    CHATS_LIST("/v3/chat/list"),
+    CHAT_HISTORY("/v3/chat/history");
 
     private final String path;
 
