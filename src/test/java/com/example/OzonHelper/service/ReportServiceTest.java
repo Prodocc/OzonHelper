@@ -49,7 +49,7 @@ public class ReportServiceTest {
     }
 
     @Test
-    public void updateReportTable() throws Exception {
+    public void updateDailyReport() throws Exception {
         List<List<Object>> rawData = List.of(
                 List.of("", "", ""),
                 List.of("", "", ""),
@@ -98,7 +98,7 @@ public class ReportServiceTest {
         ArgumentCaptor<List<StockItem>> captor = ArgumentCaptor.forClass(List.class);
 
         //execute
-        reportService.updateReportTable();
+        reportService.updateDailyReport(false);
         //assert
 
         verify(googleClient).writeStockItemsByDay(
@@ -114,8 +114,8 @@ public class ReportServiceTest {
                         StockItem::getArticle,
                         StockItem::getAvailableStock,
                         StockItem::getInTransitStock,
-                        StockItem::getSellsDayBefore,
-                        StockItem::getSellsThreeWeeksBefore
+                        StockItem::getSellsForYesterday,
+                        StockItem::getSellsForLastThreeWeeks
                 )
                 .containsExactlyInAnyOrder(
                         tuple("1_1", "1_1", 2, 2, 1, 1),

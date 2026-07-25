@@ -10,7 +10,5 @@ public interface MarketplaceClient {
 
     List<OzonPostingRow> getPostings(LocalDate dateFrom, LocalDate dateTo, String[] skus, String... delivery_schema) throws IOException, InterruptedException;
 
-    String getMarketplaceName();
-
-    String getSupplierDetails();
+    String getShopName();
 }

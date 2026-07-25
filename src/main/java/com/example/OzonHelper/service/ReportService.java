@@ -27,7 +27,8 @@ public class ReportService {
     private final int SKU_START_ROW_INDEX = 2;
     private final int CLIENT_ID_COLUMN_INDEX = 0;
     private final int SKU_COLUMN_INDEX = 2;
-    private final String DAILY_REPORT_SPREADSHEET_KEY = "report-table-1";
+    private final String DAILY_REPORT_SPREADSHEET_KEY = "daily-report-table";
+    private final String DAILY_REPORT_SHEET_NAME = "Лист1";
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
@@ -43,13 +44,12 @@ public class ReportService {
         this.postingDtoMapper = postingDtoMapper;
     }
 
-    public void updateReportTable() throws Exception {
+    public void updateDailyReport(boolean weekly) throws Exception {
+        LocalDate now = LocalDate.now();
         // get sku
         Map<String, List<String>> clientSkuMap = readClientIdAndSkus();
 
         // get stock data
-        // get postings data
-        // write data
         Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap); // (sku, stockItem)
         System.out.println("База создана: " + baseStockMap.size() + " SKU из таблицы");
 
@@ -67,76 +67,53 @@ public class ReportService {
         });
 
         //get and aggregate postings
-        Instant from = LocalDate.now().minusWeeks(3).atStartOfDay().toInstant(ZoneOffset.UTC);
-        Instant to = LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant from = now.minusWeeks(3).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant to = now.atStartOfDay().toInstant(ZoneOffset.UTC);
 
         List<String> deliverySchemas = List.of("fbo");
 
-        Map<String, Integer> totalSellsThreeWeeksBefore = new HashMap<>();
-        Map<String, Integer> totalSellsDayBefore = new HashMap<>();
+        Map<String, Integer> totalSalesForLastThreeWeeks = new HashMap<>();
+        Map<String, Integer> totalSalesForYesterday = new HashMap<>();
 
-        clients.forEach((s, client) -> {
+        LocalDateTime startOfYesterday = now.minusDays(1).atStartOfDay();
+        LocalDateTime startOfToday = now.atStartOfDay();
+
+        for (String clientId : clientSkuMap.keySet()) {
+            OzonClient client = clients.get(clientId);
+            if (client == null) {
+                System.err.println(
+                        "Для clientId " + clientId + " не найден OzonClient"
+                );
+                continue;
+            }
             try {
-                String postingsReportFile = getReadyPostingsReport(from, to, deliverySchemas, client);
+                List<PostingDto> postingsForLastThreeWeeks = loadPostingDtos(from, to, deliverySchemas, client);
 
-                List<List<String>> postings = csvParser.downloadCSV(postingsReportFile); // raw
-                if (postings == null || postings.isEmpty()) {
-                    System.err.println("Пустой отчет для магазина " + s);
-                    return;
-                }
+                List<PostingDto> postingsForYesterday = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfYesterday, startOfToday);
 
-                postings = csvParser.filterCSV(postings, "Отменён"); // filtered
+                Map<String, Integer> salesBySkuForLastThreeWeeks = aggregatePostingsBySku(postingsForLastThreeWeeks);
+                mergeSalesBySku(salesBySkuForLastThreeWeeks, totalSalesForLastThreeWeeks);
 
-                List<PostingDto> sellsThreeWeeksBefore = new ArrayList<>();
-                for (List<String> tmpPosting : postings) {
-                    sellsThreeWeeksBefore.add(postingDtoMapper.mapToModel(tmpPosting));
-                }
-
-                LocalDateTime startOfYesterday = LocalDate.now().minusDays(1).atStartOfDay();
-                LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
-
-                List<PostingDto> sellsDayBefore = sellsThreeWeeksBefore.stream()
-                        .filter(postingDto -> {
-                            LocalDateTime acceptDate = postingDto.getAcceptDate();
-                            return !acceptDate.isBefore(startOfYesterday) && !acceptDate.isAfter(startOfToday);
-                        }).toList();
-
-                sellsThreeWeeksBefore.forEach(posting -> {
-                    String sku = posting.getSku().trim(); // trim на случай пробелов
-                    totalSellsThreeWeeksBefore.merge(sku, posting.getSells(), Integer::sum);
-                });
-
-                sellsDayBefore.forEach(posting -> {
-                    String sku = posting.getSku().trim();
-                    totalSellsDayBefore.merge(sku, posting.getSells(), Integer::sum);
-                });
+                Map<String, Integer> salesBySkuForYesterday = aggregatePostingsBySku(postingsForYesterday);
+                mergeSalesBySku(salesBySkuForYesterday, totalSalesForYesterday);
 
             } catch (IOException | CsvException e) {
-                System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
-            } catch (ReportCreatingException | InterruptedException e) {
-                throw new RuntimeException(e);
+                System.err.println("Ошибка обработки магазина " + client.getShopName() + ": " + e.getMessage());
+            } catch (ReportCreatingException e) {
+                System.err.println(
+                        "Не удалось сформировать отчёт магазина "
+                                + client.getShopName()
+                                + ": "
+                                + e.getMessage()
+                );
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Получение отчёта было прервано", e);
             }
-        });
+        }
 
-        totalSellsDayBefore.forEach((sku, sells) -> {
-            String cleanSku = sku.trim();
-            StockItem item = baseStockMap.get(cleanSku);
-            if (item != null) {
-                item.setSellsDayBefore(sells);
-            } else {
-                // Это значит, что товар был в продажах, но его нет в таблице.
-                // Можно логировать, но не ломать процесс.
-                System.out.println("SKU " + cleanSku + " был в продажах, но отсутствует в таблице.");
-            }
-        });
-
-        totalSellsThreeWeeksBefore.forEach((sku, sells) -> {
-            String cleanSku = sku.trim();
-            StockItem item = baseStockMap.get(cleanSku);
-            if (item != null) {
-                item.setSellsThreeWeeksBefore(sells);
-            }
-        });
+        applySalesForLastThreeWeek(baseStockMap, totalSalesForLastThreeWeeks);
+        applySalesForYesterday(baseStockMap, totalSalesForYesterday);
 
         // 5. Превращаем карту обратно в список (порядок сохранится благодаря LinkedHashMap)
         List<StockItem> resultList = new ArrayList<>(baseStockMap.values());
@@ -145,17 +122,7 @@ public class ReportService {
 
         resultList.forEach(System.out::println);
 
-        String rangeForToday = getRangeForToday();
-        List<List<Object>> date = new ArrayList<>();
-        date.add(List.of(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
-
-        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
-        String sheetName = "Лист1";
-
-        googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
-
-        googleClient.writeStockItemsByDay(spreadSheetId, sheetName, resultList); // write data
-
+        writeDailyReport(resultList);
     }
 
     private Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
@@ -170,8 +137,8 @@ public class ReportService {
                 item.setSku(cleanSku);
                 item.setAvailableStock(0);
                 item.setInTransitStock(0);
-                item.setSellsDayBefore(0);
-                item.setSellsThreeWeeksBefore(0);
+                item.setSellsForYesterday(0);
+                item.setSellsForLastThreeWeeks(0);
 
                 baseStockMap.put(cleanSku, item);
             }
@@ -242,7 +209,7 @@ public class ReportService {
                 .toList();
     }
 
-    public String getRangeForToday() {
+    public String getRangeForDailyReport() {
         DayOfWeek dayOfWeek = LocalDate.now().getDayOfWeek();
         int dayIndex = dayOfWeek.getValue() - 1; // Monday=0, Sunday=6
 
@@ -296,4 +263,90 @@ public class ReportService {
         }
         return postingsReportFile.getFile();
     }
+
+    private List<PostingDto> loadPostingDtos(Instant from, Instant to, List<String> deliverySchemas, OzonClient client) throws ReportCreatingException, IOException, InterruptedException, CsvException {
+        String postingsReportFile = getReadyPostingsReport(from, to, deliverySchemas, client);
+
+        List<List<String>> postings = csvParser.downloadCSV(postingsReportFile); // raw
+        if (postings == null || postings.isEmpty()) {
+            System.err.println("Пустой отчет для магазина " + client.getShopName());
+            return List.of();
+        }
+
+        postings = csvParser.filterCSV(postings, "Отменён"); // filtered
+
+        List<PostingDto> postingDtos = new ArrayList<>();
+        for (List<String> tmpPosting : postings) {
+            postingDtos.add(postingDtoMapper.mapToModel(tmpPosting));
+        }
+        return postingDtos;
+    }
+
+    private List<PostingDto> filterPostingsForPeriod(List<PostingDto> postings, LocalDateTime from, LocalDateTime to) {
+        return postings.stream()
+                .filter(postingDto -> {
+                    LocalDateTime acceptDate = postingDto.getAcceptDate();
+                    return !acceptDate.isBefore(from) && acceptDate.isBefore(to);
+                }).toList();
+    }
+
+    private Map<String, Integer> aggregatePostingsBySku(List<PostingDto> postings) {
+        Map<String, Integer> salesBySku = new HashMap<>();
+
+        postings.forEach(posting -> {
+            String sku = posting.getSku().trim();
+            salesBySku.merge(sku, posting.getSells(), Integer::sum);
+        });
+
+        return salesBySku;
+    }
+
+    private void mergeSalesBySku(Map<String, Integer> source, Map<String, Integer> target) {
+        source.forEach(
+                (sku, sales) ->
+                        target.merge(sku, sales, Integer::sum)
+        );
+    }
+
+    private void applySalesForLastThreeWeek(
+            Map<String, StockItem> baseStockMap,
+            Map<String, Integer> salesForLastThreeWeeks) {
+
+        salesForLastThreeWeeks.forEach(
+                (sku, sells) -> {
+                    String cleanSku = sku.trim();
+                    StockItem item = baseStockMap.get(cleanSku);
+                    if (item != null) {
+                        item.setSellsForLastThreeWeeks(sells);
+                    }
+                }
+        );
+    }
+
+    private void applySalesForYesterday(
+            Map<String, StockItem> baseStockMap,
+            Map<String, Integer> salesForYesterday) {
+        salesForYesterday.forEach(
+                (sku, sells) -> {
+                    String cleanSku = sku.trim();
+                    StockItem item = baseStockMap.get(cleanSku);
+                    if (item != null) {
+                        item.setSellsForYesterday(sells);
+                    }
+                }
+        );
+    }
+
+    private void writeDailyReport(List<StockItem> reportItems) throws Exception {
+        String rangeForToday = getRangeForDailyReport();
+        List<List<Object>> date = List.of(
+                List.of(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
+
+        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
+
+        googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
+
+        googleClient.writeStockItemsByDay(spreadSheetId, DAILY_REPORT_SHEET_NAME, reportItems); // write data
+    }
+
 }

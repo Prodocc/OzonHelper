@@ -35,7 +35,7 @@ public class Scheduler {
     @Scheduled(cron = "0 0 9 * * 1-7")
     public void reportSheetUpdate() {
         try {
-            reportService.updateReportTable();
+            reportService.updateDailyReport(false);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

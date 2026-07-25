@@ -147,10 +147,10 @@ public class GoogleClient {
             String range = sheetName + "!" + startColLetter + rowNum + ":" + endColLetter + rowNum;
 
             List<Object> valuesRow = Arrays.asList(
-                    item.getSellsDayBefore(),
+                    item.getSellsForYesterday(),
                     item.getAvailableStock(),
                     item.getInTransitStock(),
-                    item.getSellsThreeWeeksBefore()
+                    item.getSellsForLastThreeWeeks()
             );
 
             ValueRange vr = new ValueRange()
