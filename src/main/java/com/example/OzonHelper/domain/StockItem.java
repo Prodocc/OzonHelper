@@ -8,6 +8,7 @@ public class StockItem {
     private String article;
     private int availableStock;
     private int inTransitStock;
-    private int sellsDayBefore;
-    private int sellsThreeWeeksBefore;
+    private int sellsForYesterday;
+    private int sellsForLastWeek;
+    private int sellsForLastThreeWeeks;
 }

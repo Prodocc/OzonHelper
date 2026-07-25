@@ -4,24 +4,19 @@ import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.StockItem;
-import com.example.OzonHelper.domain.mapper.ItemMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
+import com.example.OzonHelper.exceptions.ReportCreatingException;
 import com.example.OzonHelper.parser.ReportCSVParser;
-import com.google.api.services.sheets.v4.Sheets;
 import com.opencsv.exceptions.CsvException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ValueRange;
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
@@ -30,54 +25,41 @@ import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
 public class ReportService {
     private final String REPORT_RANGE = "A1:AH1000";
     private final int SKU_START_ROW_INDEX = 2;
-    private final String DAILY_REPORT_SPREADSHEET_KEY = "report-table-1";
+    private final int CLIENT_ID_COLUMN_INDEX = 0;
+    private final int SKU_COLUMN_INDEX = 2;
+    private final String DAILY_REPORT_SPREADSHEET_KEY = "daily-report-table";
+    private final String DAILY_REPORT_SHEET_NAME = "Лист1";
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
     private final GoogleClient googleClient;
-    private final ItemMapper itemMapper;
     private final ReportCSVParser csvParser;
     private final PostingDtoMapper postingDtoMapper;
 
-    public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, ItemMapper itemMapper, ReportCSVParser csvParser, PostingDtoMapper postingDtoMapper) {
+    public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, ReportCSVParser csvParser, PostingDtoMapper postingDtoMapper) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
-        this.itemMapper = itemMapper;
         this.csvParser = csvParser;
         this.postingDtoMapper = postingDtoMapper;
     }
 
-    public void updateReportTable() throws Exception {
-        Map<String, List<String>> clientSkuMap = readClientIdsAndSkus();
-        int totalSkus = clientSkuMap.values().stream()
-                .mapToInt(List::size)
-                .sum();
+    public void updateDailyReport(boolean weekly) throws Exception {
+        LocalDate now = LocalDate.now();
+        // get sku
+        Map<String, List<String>> clientSkuMap = readClientIdAndSkus();
 
-        System.out.println("Всего SKU из таблицы: " + totalSkus);
-
-        Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap);
+        // get stock data
+        Map<String, StockItem> baseStockMap = getStringStockItemMap(clientSkuMap); // (sku, stockItem)
         System.out.println("База создана: " + baseStockMap.size() + " SKU из таблицы");
 
-        List<StockDto> stockDtos = new ArrayList<>();
-
         //get and aggregate fbo stocks
-
         clientSkuMap.forEach((clientId, skus) -> {
             try {
-                List<StockDto> stocks = clients.get(clientId).getFBOStocks(skus);
-                stocks = aggregateStocks(stocks);
+                List<StockDto> stocks = loadAggregatedStocks(clientId, skus);
 
-                for (StockDto dto : stocks) {
-                    String cleanSku = dto.getSku().trim();
-                    StockItem item = baseStockMap.get(cleanSku);
+                applyStocks(baseStockMap, stocks);
 
-                    if (item != null) {
-                        item.setAvailableStock(dto.getAvailableStock());
-                        item.setInTransitStock(dto.getInTransitStock());
-                        // Если в StockDto есть article, можно скопировать и его
-                    }
-                }
                 Thread.sleep(2000);
             } catch (IOException | InterruptedException e) {
                 System.err.println("Ошибка получения остатков для клиента " + clientId + ": " + e.getMessage());
@@ -85,101 +67,53 @@ public class ReportService {
         });
 
         //get and aggregate postings
-
-        Instant from = LocalDate.now().minusWeeks(3).atStartOfDay().toInstant(ZoneOffset.UTC);
-        Instant to = LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant from = now.minusWeeks(3).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant to = now.atStartOfDay().toInstant(ZoneOffset.UTC);
 
         List<String> deliverySchemas = List.of("fbo");
 
-        Map<String, Integer> totalSellsThreeWeeksBefore = new HashMap<>();
-        Map<String, Integer> totalSellsDayBefore = new HashMap<>();
+        Map<String, Integer> totalSalesForLastThreeWeeks = new HashMap<>();
+        Map<String, Integer> totalSalesForYesterday = new HashMap<>();
 
-        clients.forEach((s, client) -> {
+        LocalDateTime startOfYesterday = now.minusDays(1).atStartOfDay();
+        LocalDateTime startOfToday = now.atStartOfDay();
+
+        for (String clientId : clientSkuMap.keySet()) {
+            OzonClient client = clients.get(clientId);
+            if (client == null) {
+                System.err.println(
+                        "Для clientId " + clientId + " не найден OzonClient"
+                );
+                continue;
+            }
             try {
-                String postingsReportCode = client.createPostingsReportCode(from.toString(), to.toString(), deliverySchemas);
+                List<PostingDto> postingsForLastThreeWeeks = loadPostingDtos(from, to, deliverySchemas, client);
 
-                PostingsReportInfoResult postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
-                int attempts = 0;
-                int maxAttempts = 20;
+                List<PostingDto> postingsForYesterday = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfYesterday, startOfToday);
 
-                while (!postingsReportFile.getStatus().equals("success") && attempts < maxAttempts) {
-                    if ("failed".equals(postingsReportFile.getStatus())) {
-                        System.err.println("Отчет для магазина " + s + " не сформирован: " + postingsReportFile.getError());
-                        return; // Прерываем обработку этого магазина, но не всего цикла
-                    }
-                    Thread.sleep(5000);
-                    postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
-                    attempts++;
-                }
+                Map<String, Integer> salesBySkuForLastThreeWeeks = aggregatePostingsBySku(postingsForLastThreeWeeks);
+                mergeSalesBySku(salesBySkuForLastThreeWeeks, totalSalesForLastThreeWeeks);
 
-                if (!"success".equals(postingsReportFile.getStatus())) {
-                    System.err.println("Таймаут ожидания отчета для магазина " + s);
-                    return;
-                }
-//
-                List<List<String>> postings = csvParser.downloadCSV(postingsReportFile.getFile()); // raw
-                if (postings == null || postings.isEmpty()) {
-                    System.err.println("Пустой отчет для магазина " + s);
-                    return;
-                }
+                Map<String, Integer> salesBySkuForYesterday = aggregatePostingsBySku(postingsForYesterday);
+                mergeSalesBySku(salesBySkuForYesterday, totalSalesForYesterday);
 
-                postings = csvParser.filterCSV(postings, "Отменён"); // filtered
-
-                List<PostingDto> sellsThreeWeeksBefore = new ArrayList<>();
-                for (List<String> tmpPosting : postings) {
-                    sellsThreeWeeksBefore.add(postingDtoMapper.mapToModel(tmpPosting));
-                }
-
-                LocalDateTime startOfYesterday = LocalDate.now().minusDays(1).atStartOfDay();
-                LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
-
-                List<PostingDto> sellsDayBefore = sellsThreeWeeksBefore.stream()
-                        .filter(postingDto -> {
-                            LocalDateTime acceptDate = postingDto.getAcceptDate();
-                            return !acceptDate.isBefore(startOfYesterday) && !acceptDate.isAfter(startOfToday);
-                        }).toList();
-
-                sellsThreeWeeksBefore = aggregatePostings(sellsThreeWeeksBefore);
-                sellsDayBefore = aggregatePostings(sellsDayBefore);
-
-                sellsThreeWeeksBefore.forEach(posting -> {
-                    String sku = posting.getSku().trim(); // trim на случай пробелов
-                    totalSellsThreeWeeksBefore.merge(sku, posting.getSells(), Integer::sum);
-                });
-
-                sellsDayBefore.forEach(posting -> {
-                    String sku = posting.getSku().trim();
-                    totalSellsDayBefore.merge(sku, posting.getSells(), Integer::sum);
-                });
-
-                //populate stockItem fields with sells
-
-
-            } catch (IOException | CsvException | InterruptedException e) {
-                System.err.println("Ошибка обработки магазина " + s + ": " + e.getMessage());
+            } catch (IOException | CsvException e) {
+                System.err.println("Ошибка обработки магазина " + client.getShopName() + ": " + e.getMessage());
+            } catch (ReportCreatingException e) {
+                System.err.println(
+                        "Не удалось сформировать отчёт магазина "
+                                + client.getShopName()
+                                + ": "
+                                + e.getMessage()
+                );
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Получение отчёта было прервано", e);
             }
-        });
+        }
 
-        // 4. "ДОЛИВАЕМ" ПРОДАЖИ В БАЗОВЫЙ СПИСОК
-        totalSellsDayBefore.forEach((sku, sells) -> {
-            String cleanSku = sku.trim();
-            StockItem item = baseStockMap.get(cleanSku);
-            if (item != null) {
-                item.setSellsDayBefore(sells);
-            } else {
-                // Это значит, что товар был в продажах, но его нет в таблице.
-                // Можно логировать, но не ломать процесс.
-                System.out.println("SKU " + cleanSku + " был в продажах, но отсутствует в таблице.");
-            }
-        });
-
-        totalSellsThreeWeeksBefore.forEach((sku, sells) -> {
-            String cleanSku = sku.trim();
-            StockItem item = baseStockMap.get(cleanSku);
-            if (item != null) {
-                item.setSellsThreeWeeksBefore(sells);
-            }
-        });
+        applySalesForLastThreeWeek(baseStockMap, totalSalesForLastThreeWeeks);
+        applySalesForYesterday(baseStockMap, totalSalesForYesterday);
 
         // 5. Превращаем карту обратно в список (порядок сохранится благодаря LinkedHashMap)
         List<StockItem> resultList = new ArrayList<>(baseStockMap.values());
@@ -188,20 +122,10 @@ public class ReportService {
 
         resultList.forEach(System.out::println);
 
-        String rangeForToday = getRangeForToday();
-        List<List<Object>> date = new ArrayList<>();
-        date.add(List.of(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
-
-        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
-        String sheetName = "Лист1";
-
-        googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
-
-        googleClient.writeStockItemsByDay(spreadSheetId, sheetName, resultList); // write data
-
+        writeDailyReport(resultList);
     }
 
-    private static Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
+    private Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
         Map<String, StockItem> baseStockMap = new LinkedHashMap<>();
 
         for (List<String> skus : clientSkuMap.values()) {
@@ -213,9 +137,8 @@ public class ReportService {
                 item.setSku(cleanSku);
                 item.setAvailableStock(0);
                 item.setInTransitStock(0);
-                item.setSellsDayBefore(0);
-                item.setSellsThreeWeeksBefore(0);
-                // Заполни остальные поля дефолтными значениями, если нужно
+                item.setSellsForYesterday(0);
+                item.setSellsForLastThreeWeeks(0);
 
                 baseStockMap.put(cleanSku, item);
             }
@@ -223,58 +146,36 @@ public class ReportService {
         return baseStockMap;
     }
 
-    public Map<String, List<String>> readClientIdsAndSkus() throws IOException {
+    public Map<String, List<String>> readClientIdAndSkus() throws IOException {
         String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
 
         List<List<Object>> rawData = googleClient.fetchFreshData(spreadSheetId, REPORT_RANGE);
 
+        return mapClientIdsToSkus(rawData);
+    }
+
+    Map<String, List<String>> mapClientIdsToSkus(List<List<Object>> rawData) {
         Map<String, List<String>> clientSkuMap = new HashMap<>();
 
         for (int i = SKU_START_ROW_INDEX; i < rawData.size(); i++) {
-            List<Object> list = rawData.get(i);
-            if (!list.isEmpty()) {
-                String clientId = list.get(0).toString();
-                String sku = list.get(1).toString();
-                if (!clientSkuMap.containsKey(clientId)) {
-                    List<String> skus = new ArrayList<>();
-                    skus.add(sku);
-                    clientSkuMap.put(clientId, skus);
-                } else {
-                    clientSkuMap.get(clientId).add(sku);
-                }
+            List<Object> row = rawData.get(i);
+
+            if (row.size() <= SKU_COLUMN_INDEX) {
+                continue;
             }
 
+            String clientId = row.get(CLIENT_ID_COLUMN_INDEX).toString().trim();
+            String sku = row.get(SKU_COLUMN_INDEX).toString().trim();
+
+            if (clientId.isEmpty() || sku.isEmpty()) {
+                continue;
+            }
+
+            clientSkuMap
+                    .computeIfAbsent(clientId, ignored -> new ArrayList<>())
+                    .add(sku);
         }
         return clientSkuMap;
-    }
-
-
-    public List<PostingDto> aggregatePostings(List<PostingDto> postings) {
-        Map<String, Integer> sumBySku = postings.stream()
-                .collect(Collectors.toMap(
-                        PostingDto::getSku,
-                        PostingDto::getSells,
-                        Integer::sum
-                ));
-
-
-        LinkedHashMap<String, PostingDto> representativeBySku = postings.stream()
-                .collect(Collectors.toMap(
-                        PostingDto::getSku,
-                        p -> p,
-                        (first, second) -> first,
-                        LinkedHashMap::new
-                ));
-
-        return representativeBySku.values().stream()
-                .map(p -> {
-                    PostingDto merged = new PostingDto();
-                    merged.setSku(p.getSku());
-                    merged.setArticle(p.getArticle());
-                    merged.setAcceptDate(p.getAcceptDate());
-                    merged.setSells(sumBySku.getOrDefault(p.getSku(), 0));
-                    return merged;
-                }).toList();
     }
 
     public List<StockDto> aggregateStocks(List<StockDto> stocks) {
@@ -308,11 +209,11 @@ public class ReportService {
                 .toList();
     }
 
-    public String getRangeForToday() {
+    public String getRangeForDailyReport() {
         DayOfWeek dayOfWeek = LocalDate.now().getDayOfWeek();
         int dayIndex = dayOfWeek.getValue() - 1; // Monday=0, Sunday=6
 
-        int startColIndex = 3 + dayIndex * 4; // D=3
+        int startColIndex = 4 + dayIndex * 4; // E=4
         int endColIndex = startColIndex + 3;
 
         String startCol = colIndexToLetter(startColIndex);
@@ -320,6 +221,132 @@ public class ReportService {
 
         // Возвращаем диапазон для всей колонки (без номера строки)
         return startCol + ":" + endCol;
+    }
+
+    private void applyStocks(Map<String, StockItem> baseStockMap, List<StockDto> stocks) {
+        for (StockDto dto : stocks) {
+            String cleanSku = dto.getSku().trim();
+            StockItem item = baseStockMap.get(cleanSku);
+
+            if (item != null) {
+                item.setArticle(dto.getArticle());
+                item.setAvailableStock(dto.getAvailableStock() + dto.getValidStock());
+                item.setInTransitStock(dto.getInTransitStock() + dto.getInSupplyStock());
+            }
+        }
+    }
+
+    private List<StockDto> loadAggregatedStocks(String clientId, List<String> skus) throws IOException, InterruptedException {
+        return aggregateStocks(clients.get(clientId).getFBOStocks(skus));
+    }
+
+    private String getReadyPostingsReport(Instant from, Instant to, List<String> deliverySchemas, OzonClient client) throws ReportCreatingException, IOException, InterruptedException {
+        String postingsReportCode = client.createPostingsReportCode(from.toString(), to.toString(), deliverySchemas);
+
+        PostingsReportInfoResult postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
+        int attempts = 0;
+        int maxAttempts = 20;
+
+        while (!"success".equals(postingsReportFile.getStatus()) && attempts < maxAttempts) {
+            if ("failed".equals(postingsReportFile.getStatus())) {
+                System.err.println("Отчет для магазина " + "тут будет имя магазина" + " не сформирован: " + postingsReportFile.getError());
+                throw new ReportCreatingException(client.getClientId(), "creation error");
+            }
+            Thread.sleep(5000);
+            postingsReportFile = client.getPostingsReportInfoByCode(postingsReportCode);
+            attempts++;
+        }
+
+        if (!"success".equals(postingsReportFile.getStatus())) {
+            System.err.println("Таймаут ожидания отчета для магазина " + "тут будет имя магазина");
+            throw new ReportCreatingException(client.getClientId(), "timeout");
+        }
+        return postingsReportFile.getFile();
+    }
+
+    private List<PostingDto> loadPostingDtos(Instant from, Instant to, List<String> deliverySchemas, OzonClient client) throws ReportCreatingException, IOException, InterruptedException, CsvException {
+        String postingsReportFile = getReadyPostingsReport(from, to, deliverySchemas, client);
+
+        List<List<String>> postings = csvParser.downloadCSV(postingsReportFile); // raw
+        if (postings == null || postings.isEmpty()) {
+            System.err.println("Пустой отчет для магазина " + client.getShopName());
+            return List.of();
+        }
+
+        postings = csvParser.filterCSV(postings, "Отменён"); // filtered
+
+        List<PostingDto> postingDtos = new ArrayList<>();
+        for (List<String> tmpPosting : postings) {
+            postingDtos.add(postingDtoMapper.mapToModel(tmpPosting));
+        }
+        return postingDtos;
+    }
+
+    private List<PostingDto> filterPostingsForPeriod(List<PostingDto> postings, LocalDateTime from, LocalDateTime to) {
+        return postings.stream()
+                .filter(postingDto -> {
+                    LocalDateTime acceptDate = postingDto.getAcceptDate();
+                    return !acceptDate.isBefore(from) && acceptDate.isBefore(to);
+                }).toList();
+    }
+
+    private Map<String, Integer> aggregatePostingsBySku(List<PostingDto> postings) {
+        Map<String, Integer> salesBySku = new HashMap<>();
+
+        postings.forEach(posting -> {
+            String sku = posting.getSku().trim();
+            salesBySku.merge(sku, posting.getSells(), Integer::sum);
+        });
+
+        return salesBySku;
+    }
+
+    private void mergeSalesBySku(Map<String, Integer> source, Map<String, Integer> target) {
+        source.forEach(
+                (sku, sales) ->
+                        target.merge(sku, sales, Integer::sum)
+        );
+    }
+
+    private void applySalesForLastThreeWeek(
+            Map<String, StockItem> baseStockMap,
+            Map<String, Integer> salesForLastThreeWeeks) {
+
+        salesForLastThreeWeeks.forEach(
+                (sku, sells) -> {
+                    String cleanSku = sku.trim();
+                    StockItem item = baseStockMap.get(cleanSku);
+                    if (item != null) {
+                        item.setSellsForLastThreeWeeks(sells);
+                    }
+                }
+        );
+    }
+
+    private void applySalesForYesterday(
+            Map<String, StockItem> baseStockMap,
+            Map<String, Integer> salesForYesterday) {
+        salesForYesterday.forEach(
+                (sku, sells) -> {
+                    String cleanSku = sku.trim();
+                    StockItem item = baseStockMap.get(cleanSku);
+                    if (item != null) {
+                        item.setSellsForYesterday(sells);
+                    }
+                }
+        );
+    }
+
+    private void writeDailyReport(List<StockItem> reportItems) throws Exception {
+        String rangeForToday = getRangeForDailyReport();
+        List<List<Object>> date = List.of(
+                List.of(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
+
+        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
+
+        googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
+
+        googleClient.writeStockItemsByDay(spreadSheetId, DAILY_REPORT_SHEET_NAME, reportItems); // write data
     }
 
 }

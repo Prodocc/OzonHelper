@@ -1,8 +1,7 @@
-package com.example.OzonHelper;
+package com.example.OzonHelper.service;
 
 import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
-import com.example.OzonHelper.service.FbsLogService;
 import com.example.OzonHelper.util.*;
 import com.google.api.services.sheets.v4.model.Color;
 import com.google.api.services.sheets.v4.model.GridRange;

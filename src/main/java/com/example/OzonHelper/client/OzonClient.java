@@ -47,7 +47,6 @@ import java.util.Map;
 @Data
 public class OzonClient implements MarketplaceClient {
 
-    private static final String MARKETPLACE_NAME = "OZON";
     private final int SUPPLY_ORDERS_MAX_LIMIT = 100;
     private final int FBS_POSTING_MAX_LIMIT = 100;
     private final int CHATS_LIST_LIMIT = 100;
@@ -58,7 +57,7 @@ public class OzonClient implements MarketplaceClient {
     private final String apiHost;
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
-    private final String supplierDetails;
+    private final String shopName;
 
 
     public OzonClient(OzonStoreConfig config, String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
@@ -67,8 +66,7 @@ public class OzonClient implements MarketplaceClient {
         this.apiHost = ozonApiHost;
         this.clientId = config.getClientId();
         this.apiKey = config.getApiKey();
-        this.supplierDetails = config.getName();
-        this.chatNameIdMap = config.getChatNameIdMap();
+        this.shopName = config.getName();
     }
 
     @Override
@@ -77,13 +75,8 @@ public class OzonClient implements MarketplaceClient {
     }
 
     @Override
-    public String getMarketplaceName() {
-        return MARKETPLACE_NAME;
-    }
-
-    @Override
-    public String getSupplierDetails() {
-        return this.supplierDetails;
+    public String getShopName() {
+        return this.shopName;
     }
 
     private HttpResponse<String> createJsonBodyAndSendRequest(String url, Object JsonRequestBodyObject) throws IOException, InterruptedException {

@@ -104,15 +104,15 @@ public class GoogleClient {
         DayOfWeek dayOfWeek = today.getDayOfWeek();
         int dayIndex = dayOfWeek.getValue() - 1; // Monday=0
 
-        // Для Пн (0): старт D (3), конец G (6). Для Вт (1): старт H (7), конец K (10)
-        int startColIndex = 3 + (dayIndex * 4);
+        // Для Пн (0): старт E (4), конец H (7). Для Вт (1): старт I (8), конец L (11)
+        int startColIndex = 4 + (dayIndex * 4);
         int endColIndex = startColIndex + 3;
 
         String startColLetter = colIndexToLetter(startColIndex);
         String endColLetter = colIndexToLetter(endColIndex);
 
         // --- 2. Читаем столбец B (SKU), чтобы найти номера строк ---
-        String skuRange = sheetName + "!B:B";
+        String skuRange = sheetName + "!C:C";
         var skuResponse = sheetsService.spreadsheets().values()
                 .get(spreadsheetId, skuRange)
                 .execute();
@@ -147,10 +147,10 @@ public class GoogleClient {
             String range = sheetName + "!" + startColLetter + rowNum + ":" + endColLetter + rowNum;
 
             List<Object> valuesRow = Arrays.asList(
-                    item.getSellsDayBefore(),
+                    item.getSellsForYesterday(),
                     item.getAvailableStock(),
                     item.getInTransitStock(),
-                    item.getSellsThreeWeeksBefore()
+                    item.getSellsForLastThreeWeeks()
             );
 
             ValueRange vr = new ValueRange()
