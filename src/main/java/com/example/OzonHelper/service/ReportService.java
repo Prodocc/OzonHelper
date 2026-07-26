@@ -28,7 +28,9 @@ public class ReportService {
     private final int CLIENT_ID_COLUMN_INDEX = 0;
     private final int SKU_COLUMN_INDEX = 2;
     private final String DAILY_REPORT_SPREADSHEET_KEY = "daily-report-table";
+    private final String WEEKLY_REPORT_SPREADSHEET_KEY = "weekly-report-table";
     private final String DAILY_REPORT_SHEET_NAME = "Лист1";
+    private final String WEEKLY_REPORT_SHEET_NAME = "Продажи еженедельные";
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
@@ -73,8 +75,10 @@ public class ReportService {
         List<String> deliverySchemas = List.of("fbo");
 
         Map<String, Integer> totalSalesForLastThreeWeeks = new HashMap<>();
+        Map<String, Integer> totalSalesForLastWeek = new HashMap<>();
         Map<String, Integer> totalSalesForYesterday = new HashMap<>();
 
+        LocalDateTime startOfTheLastWeek = now.minusWeeks(1).atStartOfDay();
         LocalDateTime startOfYesterday = now.minusDays(1).atStartOfDay();
         LocalDateTime startOfToday = now.atStartOfDay();
 
@@ -89,10 +93,14 @@ public class ReportService {
             try {
                 List<PostingDto> postingsForLastThreeWeeks = loadPostingDtos(from, to, deliverySchemas, client);
 
+                List<PostingDto> postingsForLastWeek = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfTheLastWeek, startOfTheLastWeek);
                 List<PostingDto> postingsForYesterday = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfYesterday, startOfToday);
 
                 Map<String, Integer> salesBySkuForLastThreeWeeks = aggregatePostingsBySku(postingsForLastThreeWeeks);
                 mergeSalesBySku(salesBySkuForLastThreeWeeks, totalSalesForLastThreeWeeks);
+
+                Map<String, Integer> salesBySkuForLastWeek = aggregatePostingsBySku(postingsForLastWeek);
+                mergeSalesBySku(salesBySkuForLastWeek, totalSalesForLastWeek);
 
                 Map<String, Integer> salesBySkuForYesterday = aggregatePostingsBySku(postingsForYesterday);
                 mergeSalesBySku(salesBySkuForYesterday, totalSalesForYesterday);
@@ -115,6 +123,8 @@ public class ReportService {
         applySalesForLastThreeWeek(baseStockMap, totalSalesForLastThreeWeeks);
         applySalesForYesterday(baseStockMap, totalSalesForYesterday);
 
+        if (weekly) applySalesForLastWeek(baseStockMap, totalSalesForLastWeek);
+
         // 5. Превращаем карту обратно в список (порядок сохранится благодаря LinkedHashMap)
         List<StockItem> resultList = new ArrayList<>(baseStockMap.values());
 
@@ -123,6 +133,8 @@ public class ReportService {
         resultList.forEach(System.out::println);
 
         writeDailyReport(resultList);
+//
+        if (weekly) writeWeeklyReport(resultList);
     }
 
     private Map<String, StockItem> getStringStockItemMap(Map<String, List<String>> clientSkuMap) {
@@ -323,6 +335,21 @@ public class ReportService {
         );
     }
 
+    private void applySalesForLastWeek(
+            Map<String, StockItem> baseStockMap,
+            Map<String, Integer> salesForLastWeek) {
+
+        salesForLastWeek.forEach(
+                (sku, sells) -> {
+                    String cleanSku = sku.trim();
+                    StockItem item = baseStockMap.get(cleanSku);
+                    if (item != null) {
+                        item.setSellsForLastWeek(sells);
+                    }
+                }
+        );
+    }
+
     private void applySalesForYesterday(
             Map<String, StockItem> baseStockMap,
             Map<String, Integer> salesForYesterday) {
@@ -346,7 +373,48 @@ public class ReportService {
 
         googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
 
-        googleClient.writeStockItemsByDay(spreadSheetId, DAILY_REPORT_SHEET_NAME, reportItems); // write data
+        googleClient.writeDailyReportItems(spreadSheetId, DAILY_REPORT_SHEET_NAME, reportItems); // write data
     }
 
+    private void writeWeeklyReport(List<StockItem> reportItems) throws Exception {
+        String rangeForWeeklyReport = getRangeForWeeklyReport();
+
+        DateTimeFormatter startFormatter = DateTimeFormatter.ofPattern("dd");
+        DateTimeFormatter endFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+        String startOfTheWeek = LocalDate.now().minusWeeks(1).format(startFormatter);
+        String endOfTheWeek = LocalDate.now().minusDays(1).format(endFormatter);
+
+        List<List<Object>> date = List.of(
+                List.of(startOfTheWeek + "-" + endOfTheWeek));
+
+        String spreadSheetId = sheetsProperties.getSheets().get(WEEKLY_REPORT_SPREADSHEET_KEY);
+        String range = WEEKLY_REPORT_SHEET_NAME + "!" + rangeForWeeklyReport;
+
+        googleClient.writeTable(date, spreadSheetId, range);  // write date
+
+        googleClient.writeWeeklyReportItems(spreadSheetId, WEEKLY_REPORT_SHEET_NAME, reportItems, rangeForWeeklyReport);
+    }
+
+    private String getRangeForWeeklyReport() throws IOException {
+        String spreadSheetId = sheetsProperties.getSheets().get(WEEKLY_REPORT_SPREADSHEET_KEY);
+
+        String range = WEEKLY_REPORT_SHEET_NAME + "!" + "1:1";
+
+        List<List<Object>> values = googleClient.readTable(spreadSheetId, range);
+
+        List<String> firstRow = values.get(0)
+                .stream()
+                .map(value -> value == null ? "" : value.toString())
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+        int startColIndex = 3 + firstRow.size() * 3;
+        int endColIndex = startColIndex + 3;
+
+        String startCol = colIndexToLetter(startColIndex);
+        String endCol = colIndexToLetter(endColIndex);
+
+        return startCol + ":" + endCol;
+    }
 }

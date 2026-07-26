@@ -6,13 +6,11 @@ import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.StockItem;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
-import com.example.OzonHelper.dto.response.fbo.PostingDto;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -93,7 +91,7 @@ public class ReportServiceTest {
         when(csvParser.filterCSV(postingsForClientOne, "Отменён")).thenReturn(postingsForClientOne);
         when(csvParser.filterCSV(postingsForClientTwo, "Отменён")).thenReturn(postingsForClientTwo);
         doNothing().when(googleClient).writeTable(anyList(), anyString(), anyString());
-        doNothing().when(googleClient).writeStockItemsByDay(anyString(), anyString(), anyList());
+        doNothing().when(googleClient).writeDailyReportItems(anyString(), anyString(), anyList());
 
         ArgumentCaptor<List<StockItem>> captor = ArgumentCaptor.forClass(List.class);
 
@@ -101,7 +99,7 @@ public class ReportServiceTest {
         reportService.updateDailyReport(false);
         //assert
 
-        verify(googleClient).writeStockItemsByDay(
+        verify(googleClient).writeDailyReportItems(
                 any(),
                 anyString(),
                 captor.capture()

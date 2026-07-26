@@ -6,7 +6,6 @@ import com.example.OzonHelper.domain.Warehouse;
 import com.example.OzonHelper.dto.request.PostingsReportCreateFilter;
 import com.example.OzonHelper.dto.request.PostingsReportCreateRequest;
 import com.example.OzonHelper.dto.request.PostingsReportInfoRequest;
-import com.example.OzonHelper.dto.request.chat.GetChatHistoryFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatHistoryRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
@@ -40,7 +39,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 //TODO: split from ozonclient to -> FBSClient/FBOClient maybe
 
@@ -51,7 +49,6 @@ public class OzonClient implements MarketplaceClient {
     private final int FBS_POSTING_MAX_LIMIT = 100;
     private final int CHATS_LIST_LIMIT = 100;
     private final int CHAT_HISTORY_LIMIT = 1000;
-    private final Map<String, String> chatNameIdMap;
     private final String clientId;
     private final String apiKey;
     private final String apiHost;
