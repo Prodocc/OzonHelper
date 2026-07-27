@@ -94,10 +94,11 @@ public class OzonClient implements MarketplaceClient {
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    public List<String> getSupplyOrdersIds(SupplyState... supplyStates) throws IOException, InterruptedException {
+    public List<String> getSupplyOrdersIds(String supplyNumber, SupplyState... supplyStates) throws IOException, InterruptedException {
         GetSupplyOrdersID request = new GetSupplyOrdersID();
         GetSupplyOrdersFilter filter = new GetSupplyOrdersFilter();
 
+        filter.setOrderNumber(supplyNumber);
         filter.setStates(Arrays.stream(supplyStates).toList());
 
         request.setFilter(filter);

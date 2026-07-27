@@ -132,8 +132,8 @@ public class ReportService {
 
         resultList.forEach(System.out::println);
 
-//        writeDailyReport(resultList);
-//
+        writeDailyReport(resultList);
+
         if (weekly) writeWeeklyReport(resultList);
     }
 
