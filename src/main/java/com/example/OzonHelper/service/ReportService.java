@@ -93,7 +93,7 @@ public class ReportService {
             try {
                 List<PostingDto> postingsForLastThreeWeeks = loadPostingDtos(from, to, deliverySchemas, client);
 
-                List<PostingDto> postingsForLastWeek = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfTheLastWeek, startOfTheLastWeek);
+                List<PostingDto> postingsForLastWeek = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfTheLastWeek, startOfToday);
                 List<PostingDto> postingsForYesterday = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfYesterday, startOfToday);
 
                 Map<String, Integer> salesBySkuForLastThreeWeeks = aggregatePostingsBySku(postingsForLastThreeWeeks);
@@ -132,7 +132,7 @@ public class ReportService {
 
         resultList.forEach(System.out::println);
 
-        writeDailyReport(resultList);
+//        writeDailyReport(resultList);
 //
         if (weekly) writeWeeklyReport(resultList);
     }
@@ -150,6 +150,7 @@ public class ReportService {
                 item.setAvailableStock(0);
                 item.setInTransitStock(0);
                 item.setSellsForYesterday(0);
+                item.setSellsForLastWeek(0);
                 item.setSellsForLastThreeWeeks(0);
 
                 baseStockMap.put(cleanSku, item);

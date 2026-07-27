@@ -132,7 +132,7 @@ public class GoogleClient {
         SheetColumnRange sheetColumnRange = buildWeeklySheetColumnRange(weeklyColumnRange, sheetName);
 
         Function<StockItem, List<Object>> weeklyValuesMapper = stockItem -> Arrays.asList(
-                stockItem.getSellsForYesterday(),
+                stockItem.getSellsForLastWeek(),
                 stockItem.getAvailableStock(),
                 stockItem.getInTransitStock());
 
