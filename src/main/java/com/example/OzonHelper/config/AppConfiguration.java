@@ -41,7 +41,7 @@ public class AppConfiguration {
     }
 
     @Bean
-    public Map<String, OzonClient> ozonClient(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
+    public Map<String, OzonClient> ozonClients(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
 
         List<OzonStoreConfig> ozonStores = storeProperties.getOzon();
 

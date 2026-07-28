@@ -24,7 +24,9 @@ public class SupplyOrderDto {
     @JsonProperty("state")
     private SupplyState supplyState;
     @JsonProperty("supplies")
-    private List<SupplyInfoDto> supplies;
+    private List<SupplyOrderInfoDto> supplies;
+    @JsonProperty("state_updated_date")
+    private LocalDateTime supplyStateUpdatedDate;
     @JsonProperty("timeslot")
     private TimeSlotWrapperDto timeslotWrapper;
 }
