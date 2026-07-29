@@ -7,7 +7,7 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SupplyInfoDto {
+public class SupplyOrderInfoDto {
     @JsonProperty("is_crossdock")
     private boolean isCrossDock;
     @JsonProperty("bundle_id")

@@ -13,4 +13,6 @@ import java.util.List;
 public class GetSupplyOrdersResponse {
     @JsonProperty("order_ids")
     private List<String> supplyOrderIds;
+    @JsonProperty("last_id")
+    private String lastId;
 }

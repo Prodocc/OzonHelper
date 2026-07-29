@@ -20,7 +20,6 @@ import com.example.OzonHelper.dto.response.chat.GetChatListResponse;
 import com.example.OzonHelper.dto.response.chat.MessageDto;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
-import com.example.OzonHelper.dto.response.fbo.SupplyOrderContentDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
@@ -45,10 +44,10 @@ import java.util.List;
 @Data
 public class OzonClient implements MarketplaceClient {
 
-    private final int SUPPLY_ORDERS_MAX_LIMIT = 100;
-    private final int FBS_POSTING_MAX_LIMIT = 100;
-    private final int CHATS_LIST_LIMIT = 100;
-    private final int CHAT_HISTORY_LIMIT = 1000;
+    private static final int SUPPLY_ORDERS_MAX_LIMIT = 100;
+    private static final int FBS_POSTING_MAX_LIMIT = 100;
+    private static final int CHATS_LIST_LIMIT = 100;
+    private static final int CHAT_HISTORY_LIMIT = 1000;
     private final String clientId;
     private final String apiKey;
     private final String apiHost;
@@ -94,10 +93,11 @@ public class OzonClient implements MarketplaceClient {
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    public List<String> getSupplyOrdersIds(SupplyState... supplyStates) throws IOException, InterruptedException {
-        GetSupplyOrdersID request = new GetSupplyOrdersID();
+    public List<String> getSupplyOrderIdBySupplyNumber(String supplyNumber, SupplyState... supplyStates) throws IOException, InterruptedException {
+        GetSupplyOrdersId request = new GetSupplyOrdersId();
         GetSupplyOrdersFilter filter = new GetSupplyOrdersFilter();
 
+        filter.setOrderNumber(supplyNumber);
         filter.setStates(Arrays.stream(supplyStates).toList());
 
         request.setFilter(filter);
@@ -108,6 +108,26 @@ public class OzonClient implements MarketplaceClient {
                 OzonApiEndpoint.SUPPLY_ORDER_LIST.getFullUrl(apiHost),
                 request);
         return mapper.readValue(response.body(), GetSupplyOrdersResponse.class).getSupplyOrderIds();
+    }
+
+    public SupplyOrdersPage getSupplyOrdersIds(String lastId, SupplyState... supplyStates) throws IOException, InterruptedException {
+        GetSupplyOrdersId request = new GetSupplyOrdersId();
+        GetSupplyOrdersFilter filter = new GetSupplyOrdersFilter();
+
+        filter.setStates(Arrays.stream(supplyStates).toList());
+
+
+        request.setFilter(filter);
+        request.setLastId(lastId);
+        request.setLimit(SUPPLY_ORDERS_MAX_LIMIT);
+        request.setSortBy(SupplySortStatus.TIMESLOT_FROM_UTC);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_ORDER_LIST.getFullUrl(apiHost),
+                request);
+
+        GetSupplyOrdersResponse getSupplyOrdersResponse = mapper.readValue(response.body(), GetSupplyOrdersResponse.class);
+        return new SupplyOrdersPage(getSupplyOrdersResponse.getSupplyOrderIds(), getSupplyOrdersResponse.getLastId());
     }
 
     public List<SupplyOrderDto> getSupplyOrders(List<String> supplyOrderIds) throws IOException, InterruptedException {
@@ -121,7 +141,7 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSupplyOrderResponse.class).getOrders();
     }
 
-    public List<SupplyOrderContentDto> getSupplyOrdersContent(List<String> bundleIds) throws IOException, InterruptedException {
+    public SupplyOrderCompositionDto getSupplyOrdersComposition(List<String> bundleIds) throws IOException, InterruptedException {
         GetSupplyOrdersCompositionRequest request = new GetSupplyOrdersCompositionRequest();
 
         request.setBundleIds(bundleIds);
@@ -131,7 +151,8 @@ public class OzonClient implements MarketplaceClient {
                 OzonApiEndpoint.SUPPLY_ORDER_COMPOSITION.getFullUrl(apiHost),
                 request);
 
-        return mapper.readValue(response.body(), GetSupplyOrdersContentResponse.class).getItems();
+        GetSupplyOrdersContentResponse getSupplyOrdersContentResponse = mapper.readValue(response.body(), GetSupplyOrdersContentResponse.class);
+        return new SupplyOrderCompositionDto(getSupplyOrdersContentResponse.getItems(), getSupplyOrdersContentResponse.getTotalCount());
     }
 
     public List<PostingDto> getFbsPostingList(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
