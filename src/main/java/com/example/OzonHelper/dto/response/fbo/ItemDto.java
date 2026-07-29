@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SupplyOrderContentDto {
+public class ItemDto {
     @JsonProperty("sku")
     private long sku;
     @JsonProperty("name")

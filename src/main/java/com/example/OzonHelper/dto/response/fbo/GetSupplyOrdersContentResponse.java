@@ -10,5 +10,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetSupplyOrdersContentResponse {
     @JsonProperty("items")
-    private List<SupplyOrderContentDto> items;
+    private List<ItemDto> items;
+    @JsonProperty("total_count")
+    private int totalCount;
 }

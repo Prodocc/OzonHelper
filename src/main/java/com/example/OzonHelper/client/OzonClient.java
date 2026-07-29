@@ -20,7 +20,6 @@ import com.example.OzonHelper.dto.response.chat.GetChatListResponse;
 import com.example.OzonHelper.dto.response.chat.MessageDto;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
-import com.example.OzonHelper.dto.response.fbo.SupplyOrderContentDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
@@ -142,7 +141,7 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSupplyOrderResponse.class).getOrders();
     }
 
-    public List<SupplyOrderContentDto> getSupplyOrdersContent(List<String> bundleIds) throws IOException, InterruptedException {
+    public SupplyOrderCompositionDto getSupplyOrdersComposition(List<String> bundleIds) throws IOException, InterruptedException {
         GetSupplyOrdersCompositionRequest request = new GetSupplyOrdersCompositionRequest();
 
         request.setBundleIds(bundleIds);
@@ -152,7 +151,8 @@ public class OzonClient implements MarketplaceClient {
                 OzonApiEndpoint.SUPPLY_ORDER_COMPOSITION.getFullUrl(apiHost),
                 request);
 
-        return mapper.readValue(response.body(), GetSupplyOrdersContentResponse.class).getItems();
+        GetSupplyOrdersContentResponse getSupplyOrdersContentResponse = mapper.readValue(response.body(), GetSupplyOrdersContentResponse.class);
+        return new SupplyOrderCompositionDto(getSupplyOrdersContentResponse.getItems(), getSupplyOrdersContentResponse.getTotalCount());
     }
 
     public List<PostingDto> getFbsPostingList(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
