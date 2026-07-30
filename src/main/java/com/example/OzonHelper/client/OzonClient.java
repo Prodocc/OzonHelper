@@ -324,6 +324,10 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), PostingsReportInfoResponse.class).getResponseResult();
     }
 
+    public void f(){
+
+    }
+
     public List<ChatDto> getChats() throws IOException, InterruptedException {
         GetChatListRequest request = new GetChatListRequest();
         GetChatListFilter filter = new GetChatListFilter();

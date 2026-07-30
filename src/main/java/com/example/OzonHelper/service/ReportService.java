@@ -280,7 +280,7 @@ public class ReportService {
     private List<PostingDto> loadPostingDtos(Instant from, Instant to, List<String> deliverySchemas, OzonClient client) throws ReportCreatingException, IOException, InterruptedException, CsvException {
         String postingsReportFile = getReadyPostingsReport(from, to, deliverySchemas, client);
 
-        List<List<String>> postings = csvParser.downloadCSV(postingsReportFile); // raw
+        List<List<String>> postings = csvParser.readCSVFromUrl(postingsReportFile); // raw
         if (postings == null || postings.isEmpty()) {
             System.err.println("Пустой отчет для магазина " + client.getShopName());
             return List.of();

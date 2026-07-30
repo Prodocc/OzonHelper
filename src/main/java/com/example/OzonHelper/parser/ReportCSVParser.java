@@ -2,11 +2,14 @@ package com.example.OzonHelper.parser;
 
 import com.opencsv.*;
 import com.opencsv.exceptions.CsvException;
+import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,7 +18,7 @@ import java.util.List;
 public class ReportCSVParser {
     private static final int POSTINGS_STATUS_INDEX = 4;
 
-    public List<List<String>> downloadCSV(String url) throws IOException, CsvException {
+    public List<List<String>> readCSVFromUrl(String url) throws IOException, CsvException {
         List<List<String>> result = new ArrayList<>();
 
         ICSVParser parser = new CSVParserBuilder()
