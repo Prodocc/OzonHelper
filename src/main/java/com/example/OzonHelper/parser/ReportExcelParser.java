@@ -32,18 +32,24 @@ public class ReportExcelParser {
             System.out.println(columnCount);
             DataFormatter formatter = new DataFormatter();
 
-//            for (Row row : sheet) {
-//                List<String> values = new ArrayList<>();
-//
-//                for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-//                    Cell cell = row.getCell(
-//                            columnIndex,
-//                            Row.MissingCellPolicy.CREATE_NULL_AS_BLANK
-//                    );
-//                    values.add(formatter.formatCellValue(cell));
-//                }
-//                result.add(values);
-//            }
+            for (int rowIndex = 2; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+
+                if (row == null) {
+                    continue;
+                }
+
+                List<String> values = new ArrayList<>();
+
+                for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+                    Cell cell = row.getCell(
+                            columnIndex,
+                            Row.MissingCellPolicy.CREATE_NULL_AS_BLANK
+                    );
+                    values.add(formatter.formatCellValue(cell));
+                }
+                result.add(values);
+            }
         }
         return result;
     }

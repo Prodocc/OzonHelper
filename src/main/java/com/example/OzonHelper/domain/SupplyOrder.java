@@ -11,6 +11,7 @@ public class SupplyOrder {
     private LocalDateTime createdDate;
     private long orderId;
     private String orderNumber;
+    private long supplyId;
     private SupplyOrderComposition composition;
     private SupplyState state;
     private String bundle_id;

@@ -4,23 +4,28 @@ import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.domain.SupplyOrder;
 import com.example.OzonHelper.domain.SupplyOrderComposition;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
+import com.example.OzonHelper.dto.report.ozon.PostingAccrualsDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderCompositionDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
+import com.example.OzonHelper.dto.response.fbo.SupplyOrderInfoDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrdersPage;
+import com.example.OzonHelper.dto.response.report.AccrualDto;
+import com.example.OzonHelper.enums.AccrualType;
 import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
+import com.example.OzonHelper.service.ReportService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.math.BigDecimal;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 @SpringBootApplication
 public class OzonHelperApplication {
@@ -30,10 +35,15 @@ public class OzonHelperApplication {
 
 //        ReportService reportService = run.getBean("reportService", ReportService.class);
 //        reportService.updateDailyReport(false);
-
+//
+//        Path incomingDir = Path.of(
+//                "D:\\reports\\crossdock\\incoming\\shop_name"
+//        );
         Path incomingDir = Path.of(
-                "D:\\reports\\crossdock\\incoming\\filtrobaza"
+                "D:\\reports\\crossdock\\incoming\\shop_name"
         );
+
+        List<PostingAccrualsDto> postingAccruals = new ArrayList<>();
 
         WatchService watchService = FileSystems.getDefault().newWatchService();
 
@@ -54,10 +64,28 @@ public class OzonHelperApplication {
             ReportExcelParser parser = new ReportExcelParser();
             List<List<String>> lists = parser.readCSV(fullPath);
             lists.forEach(System.out::println);
+
+            for (List<String> list : lists) {
+                PostingAccrualsDto dto = new PostingAccrualsDto();
+                dto.setSupplyId(list.get(0));
+                dto.setSum(list.get(15));
+                dto.setType(AccrualType.fromDescription(list.get(3)));
+                dto.setCount(1);
+
+                postingAccruals.add(dto);
+            }
         }
 
         key.reset();
 
+        for (PostingAccrualsDto dto : postingAccruals) {
+            System.out.println(dto);
+        }
+
+//        Map<String, OzonClient> clients = run.getBean("ozonClients", Map.class);
+//        OzonClient client = clients.get("2837869");
+//        OzonClient client = clients.get("4225962");
+//
 
 //        List<String> supplyOrderIds = new ArrayList<>();
 //        SupplyOrdersPage page;
@@ -89,33 +117,59 @@ public class OzonHelperApplication {
 //                ".size() = " + supplyOrderDtos
 //                .size());
 //
-//        LocalDateTime periodStart = LocalDate.now().minusMonths(1).atStartOfDay();
+//        for (SupplyOrderDto dto : supplyOrderDtos) {
+//            System.out.println("dto.getOrderNumber() = " + dto.getOrderNumber());
+//            System.out.println("dto.getSupplies().size() = " + dto.getSupplies().size());
+//            System.out.println("dto.getSupplies().get(0).getSupplyId() = " + dto.getSupplies().get(0).getSupplyId());
+//        }
+//
+//        LocalDateTime periodStart = LocalDate.now().minusMonths(1).minusDays(5).atStartOfDay();
 //        LocalDateTime periodEnd = LocalDate.now().atStartOfDay();
 //
-//        List<SupplyOrderDto> filteredSupplyOrders = supplyOrderDtos
 //
+//        List<SupplyOrderDto> filteredSupplyOrders = supplyOrderDtos
 //                .stream()
 //                .filter(supplyOrderDto -> {
 //                    LocalDateTime statusUpdateDate = supplyOrderDto.getSupplyStateUpdatedDate();
 //                    return statusUpdateDate.isAfter(periodStart) && statusUpdateDate.isBefore(periodEnd);
 //                }).toList();
+
+        // USE THIS AS FILTER
+//        List<Object> accural = new ArrayList();
+//        HashSet<Object> allowedSupplies = new HashSet<>(accural);
 //
+//        List<SupplyOrderDto> filteredSupplyOrders = supplyOrderDtos
+//                .stream()
+//                .filter(supplyOrderDto -> allowedSupplies.contains(supplyOrderDto.getOrderNumber())).toList();
+
+
 //        System.out.println(filteredSupplyOrders.size());
 //
-//        String orderNumber = filteredSupplyOrders.get(0).getOrderNumber();
-//        System.out.println("orderNumber = " + orderNumber);
 //
-//        Map<String, SupplyOrder> byOrderNumber = new HashMap<>();
+//        long supplyId = filteredSupplyOrders
+//                .stream()
+//                .filter(supplyOrderDto -> supplyOrderDto.getSupplies().size() > 1)
+//                .toList()
+//                .stream()
+//                .peek(supplyOrderDto -> System.out.println(supplyOrderDto.getOrderNumber()))
+//                .toList().get(0).getSupplies().get(0).getSupplyId();
+//        System.out.println("supplyId = " + supplyId);
+//
+//        Map<Long, SupplyOrder> bySupplyId = new HashMap<>();
 //        Map<String, SupplyOrder> byBundleId = new HashMap<>();
 //        for (SupplyOrderDto dto : filteredSupplyOrders) {
-//            SupplyOrder supplyOrder = new SupplyOrder();
-//            supplyOrder.setCreatedDate(dto.getCreationDate());
-//            supplyOrder.setOrderId(dto.getOrderId());
-//            supplyOrder.setOrderNumber(dto.getOrderNumber());
-//            supplyOrder.setState(dto.getSupplyState());
-//            supplyOrder.setBundle_id(dto.getSupplies().get(0).getBundleId());
-//            byOrderNumber.put(dto.getOrderNumber(), supplyOrder);
-//            byBundleId.put(supplyOrder.getBundle_id(), supplyOrder);
+//            SupplyOrder supplyOrder;
+//            for (SupplyOrderInfoDto infoDto : dto.getSupplies()) {
+//                supplyOrder = new SupplyOrder();
+//                supplyOrder.setCreatedDate(dto.getCreationDate());
+//                supplyOrder.setOrderId(dto.getOrderId());
+//                supplyOrder.setOrderNumber(dto.getOrderNumber());
+//                supplyOrder.setState(dto.getSupplyState());
+//                supplyOrder.setBundle_id(infoDto.getBundleId());
+//                supplyOrder.setSupplyId(infoDto.getSupplyId());
+//                bySupplyId.put(supplyOrder.getSupplyId(), supplyOrder);
+//                byBundleId.put(supplyOrder.getBundle_id(), supplyOrder);
+//            }
 //        }
 //
 //        SupplyOrderCompositionMapper compositionMapper = new SupplyOrderCompositionMapper();
@@ -126,7 +180,7 @@ public class OzonHelperApplication {
 //            Thread.sleep(300);
 //        }
 //
-//        System.out.println(byOrderNumber.get(orderNumber));
+//        System.out.println(bySupplyId.get(supplyId));
 
         System.exit(0);
     }
