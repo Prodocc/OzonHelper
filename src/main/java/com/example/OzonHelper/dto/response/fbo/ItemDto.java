@@ -8,7 +8,7 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ItemDto {
     @JsonProperty("sku")
-    private long sku;
+    private String sku;
     @JsonProperty("name")
     private String name;
     @JsonProperty("quantity")

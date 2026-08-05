@@ -7,9 +7,9 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 @Data
-public class PostingAccrualsDto {
+public class PostingAccrualDto {
     private String supplyId;
     private String sum;
-    private int count;
+    private int amount;
     private AccrualType type;
 }

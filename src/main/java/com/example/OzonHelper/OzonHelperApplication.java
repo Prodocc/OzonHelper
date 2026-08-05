@@ -1,10 +1,12 @@
 package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
+import com.example.OzonHelper.domain.PostingAccrual;
 import com.example.OzonHelper.domain.SupplyOrder;
 import com.example.OzonHelper.domain.SupplyOrderComposition;
+import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
-import com.example.OzonHelper.dto.report.ozon.PostingAccrualsDto;
+import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderCompositionDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderInfoDto;
@@ -24,8 +26,10 @@ import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @SpringBootApplication
 public class OzonHelperApplication {
@@ -43,7 +47,7 @@ public class OzonHelperApplication {
                 "D:\\reports\\crossdock\\incoming\\shop_name"
         );
 
-        List<PostingAccrualsDto> postingAccruals = new ArrayList<>();
+        List<PostingAccrualDto> postingAccruals = new ArrayList<>();
 
         WatchService watchService = FileSystems.getDefault().newWatchService();
 
@@ -61,26 +65,61 @@ public class OzonHelperApplication {
 
             System.out.println("fullPath = " + fullPath);
 
+
+            //change to - check for file size doesn't change anymore
+            Thread.sleep(1000);
+
             ReportExcelParser parser = new ReportExcelParser();
             List<List<String>> lists = parser.readCSV(fullPath);
-            lists.forEach(System.out::println);
+//            lists.forEach(System.out::println);
 
             for (List<String> list : lists) {
-                PostingAccrualsDto dto = new PostingAccrualsDto();
+                PostingAccrualDto dto = new PostingAccrualDto();
                 dto.setSupplyId(list.get(0));
                 dto.setSum(list.get(15));
                 dto.setType(AccrualType.fromDescription(list.get(3)));
-                dto.setCount(1);
-
+                dto.setAmount(Integer.parseInt(list.get(7)));
                 postingAccruals.add(dto);
             }
         }
 
         key.reset();
 
-        for (PostingAccrualsDto dto : postingAccruals) {
-            System.out.println(dto);
+        PostingAccrualMapper mapper = new PostingAccrualMapper();
+
+        List<PostingAccrual> accruals = new ArrayList<>();
+        for (PostingAccrualDto dto : postingAccruals) {
+            accruals.add(mapper.mapToModel(dto));
         }
+
+        List<PostingAccrual> crossDockAccruals = accruals
+                .stream()
+                .filter(postingAccrual -> postingAccrual.getType() == AccrualType.CROSS_DOCK)
+                .peek(System.out::println)
+                .toList();
+
+        Map<String, PostingAccrual> supplyIdToSum = new HashMap<>();
+        for (PostingAccrual current : crossDockAccruals) {
+            supplyIdToSum.compute(current.getSupplyId(),
+                    (supplyId, accumulated) -> {
+                        if (accumulated == null) {
+                            PostingAccrual aggregate = new PostingAccrual();
+                            aggregate.setSupplyId(supplyId);
+                            aggregate.setSum(current.getSum());
+                            return aggregate;
+                        }
+
+                        accumulated.setSum(
+                                accumulated.getSum().add(current.getSum())
+                        );
+
+                        return accumulated;
+                    }
+            );
+        }
+
+        supplyIdToSum.forEach((s, postingAccrual) -> System.out.println(postingAccrual));
+
 
 //        Map<String, OzonClient> clients = run.getBean("ozonClients", Map.class);
 //        OzonClient client = clients.get("2837869");
@@ -125,27 +164,27 @@ public class OzonHelperApplication {
 //
 //        LocalDateTime periodStart = LocalDate.now().minusMonths(1).minusDays(5).atStartOfDay();
 //        LocalDateTime periodEnd = LocalDate.now().atStartOfDay();
-//
-//
+
+
 //        List<SupplyOrderDto> filteredSupplyOrders = supplyOrderDtos
 //                .stream()
 //                .filter(supplyOrderDto -> {
 //                    LocalDateTime statusUpdateDate = supplyOrderDto.getSupplyStateUpdatedDate();
 //                    return statusUpdateDate.isAfter(periodStart) && statusUpdateDate.isBefore(periodEnd);
 //                }).toList();
-
-        // USE THIS AS FILTER
+//
+//         USE THIS AS FILTER
 //        List<Object> accural = new ArrayList();
 //        HashSet<Object> allowedSupplies = new HashSet<>(accural);
-//
+
 //        List<SupplyOrderDto> filteredSupplyOrders = supplyOrderDtos
 //                .stream()
 //                .filter(supplyOrderDto -> allowedSupplies.contains(supplyOrderDto.getOrderNumber())).toList();
 
 
 //        System.out.println(filteredSupplyOrders.size());
-//
-//
+
+
 //        long supplyId = filteredSupplyOrders
 //                .stream()
 //                .filter(supplyOrderDto -> supplyOrderDto.getSupplies().size() > 1)
@@ -154,7 +193,7 @@ public class OzonHelperApplication {
 //                .peek(supplyOrderDto -> System.out.println(supplyOrderDto.getOrderNumber()))
 //                .toList().get(0).getSupplies().get(0).getSupplyId();
 //        System.out.println("supplyId = " + supplyId);
-//
+
 //        Map<Long, SupplyOrder> bySupplyId = new HashMap<>();
 //        Map<String, SupplyOrder> byBundleId = new HashMap<>();
 //        for (SupplyOrderDto dto : filteredSupplyOrders) {
@@ -180,6 +219,9 @@ public class OzonHelperApplication {
 //            Thread.sleep(300);
 //        }
 //
+//        for (SupplyOrder supplyOrder : bySupplyId.values()) {
+//            System.out.println(supplyOrder);
+//        }
 //        System.out.println(bySupplyId.get(supplyId));
 
         System.exit(0);
