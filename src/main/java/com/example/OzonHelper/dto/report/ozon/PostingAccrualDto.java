@@ -10,6 +10,6 @@ import java.util.Optional;
 public class PostingAccrualDto {
     private String supplyId;
     private String sum;
-    private int amount;
+    private int cargoSpaceCount;
     private AccrualType type;
 }

@@ -14,7 +14,7 @@ public class PostingAccrual {
     private String article;
     private long sku;
     private String productName;
-    private int amount;
+    private int cargoSpaceCount;
     private BigDecimal sellerPrice;
     private LocalDate acceptanceDate;
     private BigDecimal sum;

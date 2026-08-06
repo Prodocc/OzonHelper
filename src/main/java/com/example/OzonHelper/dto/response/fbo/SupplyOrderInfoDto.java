@@ -10,6 +10,8 @@ import lombok.Data;
 public class SupplyOrderInfoDto {
     @JsonProperty("is_crossdock")
     private boolean isCrossDock;
+    @JsonProperty("macrolocal_cluster_id")
+    private long clusterId;
     @JsonProperty("bundle_id")
     private String bundleId;
     @JsonProperty("state")

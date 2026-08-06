@@ -44,7 +44,7 @@ public class OzonHelperApplication {
 //                "D:\\reports\\crossdock\\incoming\\shop_name"
 //        );
         Path incomingDir = Path.of(
-                "D:\\reports\\crossdock\\incoming\\shop_name"
+                "D:\\reports\\crossdock\\incoming\\osmos_ecolife"
         );
 
         List<PostingAccrualDto> postingAccruals = new ArrayList<>();
@@ -78,7 +78,7 @@ public class OzonHelperApplication {
                 dto.setSupplyId(list.get(0));
                 dto.setSum(list.get(15));
                 dto.setType(AccrualType.fromDescription(list.get(3)));
-                dto.setAmount(Integer.parseInt(list.get(7)));
+                dto.setCargoSpaceCount(Integer.parseInt(list.get(7)));
                 postingAccruals.add(dto);
             }
         }
