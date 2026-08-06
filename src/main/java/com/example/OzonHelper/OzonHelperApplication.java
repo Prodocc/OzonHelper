@@ -16,9 +16,12 @@ import com.example.OzonHelper.enums.AccrualType;
 import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
+import com.example.OzonHelper.service.CrossdockReportWatcher;
 import com.example.OzonHelper.service.ReportService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import java.math.BigDecimal;
@@ -32,10 +35,20 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class OzonHelperApplication {
 
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
+
+//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+//        OzonClient client = ozonClients.get("1140235");
+
+//        System.out.println(client.getReportFolder());
+
+
+        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
+        crossdockReportWatcher.watch();
 
 //        ReportService reportService = run.getBean("reportService", ReportService.class);
 //        reportService.updateDailyReport(false);
@@ -43,82 +56,82 @@ public class OzonHelperApplication {
 //        Path incomingDir = Path.of(
 //                "D:\\reports\\crossdock\\incoming\\shop_name"
 //        );
-        Path incomingDir = Path.of(
-                "D:\\reports\\crossdock\\incoming\\osmos_ecolife"
-        );
+//        Path incomingDir = Path.of(
+//                "D:\\reports\\crossdock\\incoming\\osmos_ecolife"
+//        );
+//
+//        List<PostingAccrualDto> postingAccruals = new ArrayList<>();
+//
+//        WatchService watchService = FileSystems.getDefault().newWatchService();
+//
+//        incomingDir.register(
+//                watchService,
+//                StandardWatchEventKinds.ENTRY_CREATE
+//        );
+//
+//        WatchKey key = watchService.take();
+//
+//        for (WatchEvent<?> event : key.pollEvents()) {
+//            Path fileName = (Path) event.context();
+//
+//            Path fullPath = incomingDir.resolve(fileName);
+//
+//            System.out.println("fullPath = " + fullPath);
 
-        List<PostingAccrualDto> postingAccruals = new ArrayList<>();
 
-        WatchService watchService = FileSystems.getDefault().newWatchService();
-
-        incomingDir.register(
-                watchService,
-                StandardWatchEventKinds.ENTRY_CREATE
-        );
-
-        WatchKey key = watchService.take();
-
-        for (WatchEvent<?> event : key.pollEvents()) {
-            Path fileName = (Path) event.context();
-
-            Path fullPath = incomingDir.resolve(fileName);
-
-            System.out.println("fullPath = " + fullPath);
-
-
-            //change to - check for file size doesn't change anymore
-            Thread.sleep(1000);
-
-            ReportExcelParser parser = new ReportExcelParser();
-            List<List<String>> lists = parser.readCSV(fullPath);
-//            lists.forEach(System.out::println);
-
-            for (List<String> list : lists) {
-                PostingAccrualDto dto = new PostingAccrualDto();
-                dto.setSupplyId(list.get(0));
-                dto.setSum(list.get(15));
-                dto.setType(AccrualType.fromDescription(list.get(3)));
-                dto.setCargoSpaceCount(Integer.parseInt(list.get(7)));
-                postingAccruals.add(dto);
-            }
-        }
-
-        key.reset();
-
-        PostingAccrualMapper mapper = new PostingAccrualMapper();
-
-        List<PostingAccrual> accruals = new ArrayList<>();
-        for (PostingAccrualDto dto : postingAccruals) {
-            accruals.add(mapper.mapToModel(dto));
-        }
-
-        List<PostingAccrual> crossDockAccruals = accruals
-                .stream()
-                .filter(postingAccrual -> postingAccrual.getType() == AccrualType.CROSS_DOCK)
-                .peek(System.out::println)
-                .toList();
-
-        Map<String, PostingAccrual> supplyIdToSum = new HashMap<>();
-        for (PostingAccrual current : crossDockAccruals) {
-            supplyIdToSum.compute(current.getSupplyId(),
-                    (supplyId, accumulated) -> {
-                        if (accumulated == null) {
-                            PostingAccrual aggregate = new PostingAccrual();
-                            aggregate.setSupplyId(supplyId);
-                            aggregate.setSum(current.getSum());
-                            return aggregate;
-                        }
-
-                        accumulated.setSum(
-                                accumulated.getSum().add(current.getSum())
-                        );
-
-                        return accumulated;
-                    }
-            );
-        }
-
-        supplyIdToSum.forEach((s, postingAccrual) -> System.out.println(postingAccrual));
+        //change to - check for file size doesn't change anymore
+//            Thread.sleep(1000);
+//
+//            ReportExcelParser parser = new ReportExcelParser();
+//            List<List<String>> lists = parser.readCSV(fullPath);
+//
+//            for (List<String> list : lists) {
+//                PostingAccrualDto dto = new PostingAccrualDto();
+//                dto.setSupplyId(list.get(0));
+//                dto.setSum(list.get(15));
+//                dto.setType(AccrualType.fromDescription(list.get(3)));
+//                dto.setCargoSpaceCount(Integer.parseInt(list.get(7)));
+//                postingAccruals.add(dto);
+//            }
+//        }
+//
+//        key.reset();
+//
+//        PostingAccrualMapper mapper = new PostingAccrualMapper();
+//
+//        List<PostingAccrual> accruals = new ArrayList<>();
+//        for (PostingAccrualDto dto : postingAccruals) {
+//            accruals.add(mapper.mapToModel(dto));
+//        }
+//
+//        List<PostingAccrual> crossDockAccruals = accruals
+//                .stream()
+//                .filter(postingAccrual -> postingAccrual.getType() == AccrualType.CROSS_DOCK)
+//                .peek(System.out::println)
+//                .toList();
+//
+//        Map<String, PostingAccrual> supplyIdToSum = new HashMap<>();
+//        for (PostingAccrual current : crossDockAccruals) {
+//            supplyIdToSum.compute(current.getSupplyId(),
+//
+//                    (supplyId, accumulated) -> {
+//                        if (accumulated == null) {
+//                            PostingAccrual aggregate = new PostingAccrual();
+//                            aggregate.setSupplyId(supplyId);
+//                            aggregate.setSum(current.getSum());
+//                            return aggregate;
+//                        }
+//
+//                        accumulated.setSum(
+//                                accumulated.getSum().add(current.getSum())
+//                        );
+//
+//                        return accumulated;
+//                    }
+//            );
+//        }
+//
+//        supplyIdToSum.forEach((s, postingAccrual) -> System.out.println(postingAccrual));
 
 
 //        Map<String, OzonClient> clients = run.getBean("ozonClients", Map.class);

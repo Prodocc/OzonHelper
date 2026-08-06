@@ -13,5 +13,6 @@ public class OzonStoreConfig {
     private String name;
     private String clientId;
     private String apiKey;
-    private Map<String,String> chatNameIdMap;
+    private Map<String, String> chatNameIdMap;
+    private String reportFolder;
 }

@@ -11,7 +11,7 @@ public class PostingAccrualMapper {
         PostingAccrual model = new PostingAccrual();
         model.setSupplyId(dto.getSupplyId());
         model.setType(dto.getType());
-        model.setAmount(dto.getAmount());
+        model.setCargoSpaceCount(dto.getCargoSpaceCount());
         model.setSum(parseMoney(dto.getSum()));
 
         return model;
@@ -26,8 +26,8 @@ public class PostingAccrualMapper {
                 .replace(" ", "")
                 .replace("₽", "")
                 .replace(",", ".")
-                .replace("\u00A0","")
-                .replace("\u202F","")
+                .replace("\u00A0", "")
+                .replace("\u202F", "")
                 .trim();
 
         return new BigDecimal(normalized);

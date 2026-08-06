@@ -57,6 +57,7 @@ public class OzonClient implements MarketplaceClient {
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     private final String shopName;
+    private final String reportFolder;
 
 
     public OzonClient(OzonStoreConfig config, String ozonApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
@@ -66,6 +67,7 @@ public class OzonClient implements MarketplaceClient {
         this.clientId = config.getClientId();
         this.apiKey = config.getApiKey();
         this.shopName = config.getName();
+        this.reportFolder = config.getReportFolder();
     }
 
     @Override

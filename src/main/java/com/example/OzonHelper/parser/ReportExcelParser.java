@@ -7,6 +7,7 @@ import com.opencsv.ICSVParser;
 import com.opencsv.exceptions.CsvValidationException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Component
 public class ReportExcelParser {
     public List<List<String>> readCSV(Path path) throws IOException, CsvValidationException {
         List<List<String>> result = new ArrayList<>();

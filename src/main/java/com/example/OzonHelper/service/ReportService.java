@@ -14,6 +14,7 @@ import com.opencsv.exceptions.CsvException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -44,6 +45,11 @@ public class ReportService {
         this.googleClient = googleClient;
         this.csvParser = csvParser;
         this.postingDtoMapper = postingDtoMapper;
+    }
+
+    public void processCrossdockReport(String clientId, Path fullPath) {
+        System.out.println("clientId = " + clientId);
+        System.out.println("fullPath = " + fullPath);
     }
 
     public void updateDailyReport(boolean weekly) throws Exception {
