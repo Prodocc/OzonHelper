@@ -33,7 +33,7 @@ public class CrossdockReportWatcher {
         this.storeProperties = storeProperties;
     }
 
-    public void watch() throws IOException, InterruptedException {
+    public void watch() throws IOException, InterruptedException, CsvValidationException {
         Map<WatchKey, StoreWatchContext> storesByWatchKey = new HashMap<>();
 
         WatchService watchService =

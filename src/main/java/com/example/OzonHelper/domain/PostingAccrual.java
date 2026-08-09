@@ -6,8 +6,12 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+
+//TODO generalize
+
 @Data
 public class PostingAccrual {
+    private SupplyOrder supplyOrder;
     private String supplyId;
     private LocalDate accrualDate;
     private AccrualType type;

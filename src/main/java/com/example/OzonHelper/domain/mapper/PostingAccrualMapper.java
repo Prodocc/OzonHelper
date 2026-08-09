@@ -2,16 +2,19 @@ package com.example.OzonHelper.domain.mapper;
 
 import com.example.OzonHelper.domain.PostingAccrual;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
+import com.example.OzonHelper.enums.AccrualType;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+@Component
 public class PostingAccrualMapper {
 
-    public PostingAccrual mapToModel(PostingAccrualDto dto) {
+    public PostingAccrual mapToModel(PostingAccrualDto dto) throws IllegalArgumentException {
         PostingAccrual model = new PostingAccrual();
         model.setSupplyId(dto.getSupplyId());
-        model.setType(dto.getType());
-        model.setCargoSpaceCount(dto.getCargoSpaceCount());
+        model.setType(AccrualType.fromDescription(dto.getType()));
+        model.setCargoSpaceCount(Integer.parseInt(dto.getCargoSpaceCount()));
         model.setSum(parseMoney(dto.getSum()));
 
         return model;

@@ -19,7 +19,7 @@ public class SupplyOrderInfoDto {
     @JsonProperty("storage_warehouse")
     private WarehouseDto receivingWarehouse;
     @JsonProperty("supply_id")
-    private long supplyId;
+    private String supplyId;
     @JsonProperty("supply_tags.is_utd")
     private boolean isUtd;
 }

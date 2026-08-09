@@ -4,10 +4,12 @@ import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.StockItem;
+import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
 import com.example.OzonHelper.parser.ReportCSVParser;
+import com.example.OzonHelper.parser.ReportExcelParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,7 +28,9 @@ public class ReportServiceTest {
     private GoogleClient googleClient;
     private GoogleSheetsProperties properties;
     private ReportCSVParser csvParser;
+    private ReportExcelParser excelParser;
     private PostingDtoMapper dtoMapper;
+    private PostingAccrualMapper accrualMapper;
 
     @BeforeEach
     public void init() {
@@ -37,13 +41,17 @@ public class ReportServiceTest {
         googleClient = mock(GoogleClient.class);
         properties = mock(GoogleSheetsProperties.class);
         csvParser = mock(ReportCSVParser.class);
+        excelParser = mock(ReportExcelParser.class);
         dtoMapper = new PostingDtoMapper();
+        accrualMapper = new PostingAccrualMapper();
         this.reportService = new ReportService(
                 clients,
                 properties,
                 googleClient,
                 csvParser,
-                dtoMapper);
+                excelParser,
+                dtoMapper,
+                accrualMapper);
     }
 
     @Test
@@ -86,8 +94,8 @@ public class ReportServiceTest {
         List<List<String>> postingsForClientOne = generatePostingsForClient("client-1", 3);
         List<List<String>> postingsForClientTwo = generatePostingsForClient("client-2", 2);
 
-        when(csvParser.downloadCSV(linkForClientOne.getFile())).thenReturn(postingsForClientOne);
-        when(csvParser.downloadCSV(linkForClientTwo.getFile())).thenReturn(postingsForClientTwo);
+        when(csvParser.readCSVFromUrl(linkForClientOne.getFile())).thenReturn(postingsForClientOne);
+        when(csvParser.readCSVFromUrl(linkForClientTwo.getFile())).thenReturn(postingsForClientTwo);
         when(csvParser.filterCSV(postingsForClientOne, "Отменён")).thenReturn(postingsForClientOne);
         when(csvParser.filterCSV(postingsForClientTwo, "Отменён")).thenReturn(postingsForClientTwo);
         doNothing().when(googleClient).writeTable(anyList(), anyString(), anyString());

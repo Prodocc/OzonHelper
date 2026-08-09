@@ -31,7 +31,6 @@ public class ReportExcelParser {
 
             Row headerRow = sheet.getRow(2);
             int columnCount = headerRow.getLastCellNum();
-            System.out.println(columnCount);
             DataFormatter formatter = new DataFormatter();
 
             for (int rowIndex = 2; rowIndex <= sheet.getLastRowNum(); rowIndex++) {

@@ -5,6 +5,7 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.*;
 import org.springframework.stereotype.Component;
 
+import javax.swing.plaf.PanelUI;
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -77,6 +78,16 @@ public class GoogleClient {
 
     public List<Sheet> getSheets(String spreadSheetId) throws IOException {
         return sheetsService.spreadsheets().get(spreadSheetId).execute().getSheets();
+    }
+
+    public boolean hasSheet(String spreadSheetId, String title) throws IOException {
+        List<Sheet> sheets = getSheets(spreadSheetId);
+        for (Sheet sheet : sheets) {
+            if (title.equals(sheet.getProperties().getTitle())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public int getSheetIdByTitle(String sheetTitle, String spreadSheetId) throws IOException {
@@ -244,6 +255,18 @@ public class GoogleClient {
         String endColLetter = colIndexToLetter(endColIndex);
 
         return new SheetColumnRange(sheetName, startColLetter, endColLetter);
+    }
+
+    public void createSheet(String spreadSheetId, String title) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+        AddSheetRequest addSheetRequest = new AddSheetRequest().setProperties(new SheetProperties().setTitle(title));
+        Request request = new Request().setAddSheet(addSheetRequest);
+
+        batchUpdateRequest.setRequests(List.of(request));
+
+        sheetsService.spreadsheets()
+                .batchUpdate(spreadSheetId, batchUpdateRequest)
+                .execute();
     }
 
     private record SheetColumnRange(String sheetName, String startColLetter, String endColLetter) {
