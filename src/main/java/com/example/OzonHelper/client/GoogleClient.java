@@ -80,14 +80,14 @@ public class GoogleClient {
         return sheetsService.spreadsheets().get(spreadSheetId).execute().getSheets();
     }
 
-    public boolean hasSheet(String spreadSheetId, String title) throws IOException {
+    public int hasSheet(String spreadSheetId, String title) throws IOException {
         List<Sheet> sheets = getSheets(spreadSheetId);
         for (Sheet sheet : sheets) {
             if (title.equals(sheet.getProperties().getTitle())) {
-                return true;
+                return sheet.getProperties().getSheetId();
             }
         }
-        return false;
+        return -1;
     }
 
     public int getSheetIdByTitle(String sheetTitle, String spreadSheetId) throws IOException {
@@ -257,12 +257,71 @@ public class GoogleClient {
         return new SheetColumnRange(sheetName, startColLetter, endColLetter);
     }
 
-    public void createSheet(String spreadSheetId, String title) throws IOException {
+    public int createSheet(String spreadSheetId, String title) throws IOException {
         BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
         AddSheetRequest addSheetRequest = new AddSheetRequest().setProperties(new SheetProperties().setTitle(title));
         Request request = new Request().setAddSheet(addSheetRequest);
 
         batchUpdateRequest.setRequests(List.of(request));
+
+        BatchUpdateSpreadsheetResponse execute = sheetsService.spreadsheets()
+                .batchUpdate(spreadSheetId, batchUpdateRequest)
+                .execute();
+
+        return execute.getReplies().get(0).getAddSheet().getProperties().getSheetId();
+    }
+
+    public void formatCrossDockSheet(String spreadSheetId, int sheetId) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+
+        RepeatCellRequest repeatCellRequest = new RepeatCellRequest().setFields(
+                "userEnteredFormat.textFormat.fontFamily," +
+                        "userEnteredFormat.textFormat.fontSize," +
+                        "userEnteredFormat.textFormat.bold"
+        );
+        GridRange gridRange = new GridRange();
+        CellData cellData = new CellData();
+        CellFormat cellFormat = new CellFormat();
+        TextFormat textFormat = new TextFormat()
+                .setFontFamily("Arial")
+                .setFontSize(12)
+                .setBold(true);
+
+        cellFormat.setTextFormat(textFormat);
+        cellData.setUserEnteredFormat(cellFormat);
+
+        gridRange.setSheetId(sheetId);
+        gridRange.setStartColumnIndex(0);
+        gridRange.setEndColumnIndex(8);
+        gridRange.setStartRowIndex(0);
+        gridRange.setEndRowIndex(1);
+
+        repeatCellRequest.setCell(cellData);
+        repeatCellRequest.setRange(gridRange);
+
+        Request repeatRequest = new Request();
+        repeatRequest.setRepeatCell(repeatCellRequest);
+
+        UpdateDimensionPropertiesRequest dimensionPropertiesRequest = new UpdateDimensionPropertiesRequest();
+        DimensionProperties dimensionProperties = new DimensionProperties();
+
+        DimensionRange dimensionRange = new DimensionRange();
+        dimensionRange.setSheetId(sheetId);
+        dimensionRange.setDimension("COLUMNS");
+        dimensionRange.setStartIndex(0);
+        dimensionRange.setEndIndex(8);
+
+        dimensionProperties.setPixelSize(200);
+
+        dimensionPropertiesRequest.setRange(dimensionRange);
+        dimensionPropertiesRequest.setProperties(dimensionProperties);
+        dimensionPropertiesRequest.setFields("pixelSize");
+
+        Request dimensionRequest = new Request();
+        dimensionRequest.setUpdateDimensionProperties(dimensionPropertiesRequest);
+
+
+        batchUpdateRequest.setRequests(List.of(repeatRequest, dimensionRequest));
 
         sheetsService.spreadsheets()
                 .batchUpdate(spreadSheetId, batchUpdateRequest)

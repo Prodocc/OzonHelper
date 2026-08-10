@@ -73,9 +73,9 @@ public class ReportService {
     }
 
     public void processCrossdockReport(String clientId, Path fullPath) throws CsvValidationException, IOException, InterruptedException {
-        OzonClient client = clients.get(clientId);
-        System.out.println("clientId = " + clientId);
-        System.out.println("fullPath = " + fullPath);
+//        OzonClient client = clients.get(clientId);
+//        System.out.println("clientId = " + clientId);
+//        System.out.println("fullPath = " + fullPath);
 
 //        // read excel file
 //        List<List<String>> lists = excelParser.readCSV(fullPath);
@@ -216,20 +216,24 @@ public class ReportService {
 
         // get ready google sheet spreadsheet
         String spreadSheetId = sheetsProperties.getSheets().get(CROSSDOCK_REPORT_SPREADSHEET_KEY);
-        String title = buildCrossDockNewSheetTitle(fullPath.getFileName().toString());
-
-        if (!googleClient.hasSheet(spreadSheetId, title)) {
-            googleClient.createSheet(spreadSheetId, title);
+//        String title = buildCrossDockNewSheetTitle(fullPath.getFileName().toString());
+        String title = "июль 2026";
+//
+        int sheetId = googleClient.hasSheet(spreadSheetId, title);
+        if (sheetId < 0) {
+            sheetId = googleClient.createSheet(spreadSheetId, title);
+            googleClient.writeTable(getCrossDockColumnHeadingData(),
+                    spreadSheetId, title + "!A1:H1");
         }
-        googleClient.writeTable(getCrossDockColumnHeadingData(),
-                spreadSheetId, title + "!A1:H1");
+        googleClient.formatCrossDockSheet(spreadSheetId, sheetId);
+
 
         // populate data
     }
 
     private List<List<Object>> getCrossDockColumnHeadingData() {
         return List.of(List.of("Название магазина", "Номер поставки", "Кластер",
-                "SKU", "Артикул", "Количество", "Сумма", "Расход на товар"));
+                "SKU ", "Артикул", "Количество", "Сумма", "Расход на товар"));
     }
 
     // add regex to parse name

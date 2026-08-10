@@ -51,8 +51,8 @@ public class OzonHelperApplication {
 //        crossdockReportWatcher.watch();
 //
         ReportService reportService = run.getBean("reportService", ReportService.class);
-        reportService.updateDailyReport(false);
-//
+//        reportService.updateDailyReport(true);
+        reportService.processCrossdockReport("123", Path.of("1"));
 
         System.exit(0);
     }
