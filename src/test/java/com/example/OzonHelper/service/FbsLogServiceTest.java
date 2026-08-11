@@ -48,7 +48,7 @@ public class FbsLogServiceTest {
 
         table.set(1, dataBuilder.createFbsPostingData().get(0));
 
-        when(client.fetchFreshData(anyString(), anyString())).thenReturn(table);
+        when(client.readTable(anyString(), anyString())).thenReturn(table);
 
         fbsLogService.syncLogList();
 
@@ -64,7 +64,7 @@ public class FbsLogServiceTest {
         table.get(0).set(0, startAndEndDateForTest[0]); // set startScope
         table.get(table.size() / 2).set(0, startAndEndDateForTest[1]); // set endScope
 
-        when(client.fetchFreshData(anyString(), anyString())).thenReturn(table);
+        when(client.readTable(anyString(), anyString())).thenReturn(table);
 
         fbsLogService.syncLogList();
 
@@ -76,7 +76,7 @@ public class FbsLogServiceTest {
     public void syncLogList_ShouldWritePostings_WhenThereIsNewScope() throws IOException {
         List<List<Object>> table = SheetTestDataFactory.createTable(10, 10);
 
-        when(client.fetchFreshData(anyString(), anyString())).thenReturn(table);
+        when(client.readTable(anyString(), anyString())).thenReturn(table);
 
         fbsLogService.syncLogList();
 

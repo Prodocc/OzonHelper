@@ -15,4 +15,5 @@ public class SupplyOrder {
     private SupplyOrderComposition composition;
     private SupplyState state;
     private String bundle_id;
+    private String clusterName;
 }

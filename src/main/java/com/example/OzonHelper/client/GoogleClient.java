@@ -72,10 +72,6 @@ public class GoogleClient {
                 batchUpdateRequest).execute();
     }
 
-    public List<List<Object>> fetchFreshData(String spreadSheetId, String range) throws IOException {
-        return sheetsService.spreadsheets().values().get(spreadSheetId, range).execute().getValues();
-    }
-
     public List<Sheet> getSheets(String spreadSheetId) throws IOException {
         return sheetsService.spreadsheets().get(spreadSheetId).execute().getSheets();
     }

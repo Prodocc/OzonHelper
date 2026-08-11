@@ -7,6 +7,13 @@ import java.util.List;
 @Component
 public class SheetAnalyzer {
 
+    public int findNextEmptyRowNumber(List<List<Object>> sheetData) {
+        if (sheetData == null) {
+            return -1;
+        }
+        return sheetData.size() + 1;
+    }
+
     public int findLastNonEmptyRowIndex(List<List<Object>> sheetData, int minUsefulDataLength) {
         if (sheetData == null || minUsefulDataLength < 0) {
             return -1;

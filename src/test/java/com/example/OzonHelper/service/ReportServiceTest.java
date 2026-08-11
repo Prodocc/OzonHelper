@@ -10,6 +10,7 @@ import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.StockDto;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
+import com.example.OzonHelper.util.SheetAnalyzer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +27,7 @@ public class ReportServiceTest {
     private ReportService reportService;
     private Map<String, OzonClient> clients;
     private GoogleClient googleClient;
+    private SheetAnalyzer sheetAnalyzer;
     private GoogleSheetsProperties properties;
     private ReportCSVParser csvParser;
     private ReportExcelParser excelParser;
@@ -39,6 +41,7 @@ public class ReportServiceTest {
                 "client-2", mock(OzonClient.class)
         );
         googleClient = mock(GoogleClient.class);
+        sheetAnalyzer = mock(SheetAnalyzer.class);
         properties = mock(GoogleSheetsProperties.class);
         csvParser = mock(ReportCSVParser.class);
         excelParser = mock(ReportExcelParser.class);
@@ -48,6 +51,7 @@ public class ReportServiceTest {
                 clients,
                 properties,
                 googleClient,
+                sheetAnalyzer,
                 csvParser,
                 excelParser,
                 dtoMapper,
@@ -67,7 +71,7 @@ public class ReportServiceTest {
                 List.of("client-2", "", "2_2")
         );
 
-        when(googleClient.fetchFreshData(any(), anyString())).thenReturn(rawData);
+        when(googleClient.readTable(any(), anyString())).thenReturn(rawData);
 
         List<StockDto> stocksForClientOne = generateStocksForClient("client-1", 3);
         List<StockDto> stocksForClientTwo = generateStocksForClient("client-2", 2);

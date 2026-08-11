@@ -76,7 +76,6 @@ public class CrossdockReportWatcher {
                 Thread.sleep(1000);
                 reportService.processCrossdockReport(context.clientId, fullPath);
             }
-
             key.reset();
         }
 
