@@ -44,13 +44,11 @@ public class OzonHelperApplication {
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 //
-        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
-        OzonClient client = ozonClients.get("1140235");
-//
-        client.getClusters().forEach(System.out::println);
+//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+//        OzonClient client = ozonClients.get("1140235");
 
-//        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
-//        crossdockReportWatcher.watch();
+        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
+        crossdockReportWatcher.watch();
 
 //        ReportService reportService = run.getBean("reportService", ReportService.class);
 //        reportService.updateDailyReport(false);

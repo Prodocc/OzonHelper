@@ -75,10 +75,6 @@ public class ReportService {
 
         // read excel file
         List<List<String>> lists = excelParser.readCSV(fullPath);
-        System.out.println("ROW CSV");
-        System.out.println("=======================");
-        lists.forEach(System.out::println);
-        System.out.println("=======================");
 
         //create accrualsDtoList
         List<PostingAccrualDto> accrualDtos = new ArrayList<>();
@@ -94,20 +90,10 @@ public class ReportService {
             accrualDtos.add(dto);
         }
 
-        System.out.println("accrualDtos");
-        System.out.println("=======================");
-        accrualDtos.forEach(System.out::println);
-        System.out.println("=======================");
-
         // filter accrualsDtoList by crossdock
         List<PostingAccrualDto> filteredByCrossDockAccrualsDto = accrualDtos
                 .stream()
                 .filter(postingAccrualDto -> postingAccrualDto.getType().equals("Кросс-докинг")).toList();
-
-        System.out.println("filteredByCrossDockAccrualsDto");
-        System.out.println("=======================");
-        filteredByCrossDockAccrualsDto.forEach(System.out::println);
-        System.out.println("=======================");
 
 
         //map to PostingAccruals
@@ -125,12 +111,6 @@ public class ReportService {
                 System.err.println(e.getMessage());
             }
         }
-
-        System.out.println("crossDockAccruals");
-        System.out.println("=======================");
-        crossDockAccruals.forEach(System.out::println);
-        System.out.println("=======================");
-
 
         //aggregate postingAccruals by supplyIdAndSum
         Map<String, PostingAccrual> accrualsBySupplyId = new HashMap<>();
@@ -150,14 +130,6 @@ public class ReportService {
                 return postingAccrual;
             });
         }
-
-        System.out.println("accrualsBySupplyId");
-        System.out.println("=======================");
-        accrualsBySupplyId.forEach((s, postingAccrual) -> {
-            System.out.print("accrual: " + s);
-            System.out.println(" " + postingAccrual);
-        });
-        System.out.println("=======================");
 
         // get all supplies from the shop
         List<String> supplyOrderIds = new ArrayList<>();
@@ -186,7 +158,8 @@ public class ReportService {
             Thread.sleep(1000);
         }
 
-        if (clustersById.isEmpty()) {
+        if (clustersById == null) {
+            clustersById = new HashMap<>();
             List<ClusterDto> clusters = client.getClusters();
             clusters.forEach(clusterDto -> clustersById.put(clusterDto.getMacrolocalClusterId(), clusterDto.getName()));
         }
@@ -254,6 +227,7 @@ public class ReportService {
         googleClient.writeTable(rawData, spreadSheetId, range);
     }
 
+    //check and modify if dataSize = 0
     private String buildCrossDockRange(String title, int startRow, int dataSize) {
         int endRow = startRow + dataSize - 1;
         return "'" + title + "'" + "!A" + startRow + ":H" + endRow;
@@ -264,13 +238,12 @@ public class ReportService {
 
         for (PostingAccrual accrual : accrualsBySupplyId.values()) {
             BigDecimal sum = accrual.getSum();
-            int itemsCount = accrual.getSupplyOrder().getComposition().getItems().size();
             for (Item item : accrual.getSupplyOrder().getComposition().getItems()) {
                 BigDecimal perItem = sum.divide(new BigDecimal(item.getQuantity()), RoundingMode.FLOOR);
                 List<Object> row = List.of(
                         shopName,
                         accrual.getSupplyId(),
-                        "cluster",
+                        accrual.getSupplyOrder().getClusterName(),
                         item.getSku(),
                         item.getArticle(),
                         item.getQuantity(),

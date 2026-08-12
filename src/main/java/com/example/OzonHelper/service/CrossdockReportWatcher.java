@@ -41,8 +41,12 @@ public class CrossdockReportWatcher {
 
         for (OzonStoreConfig store : storeProperties.getOzon()) {
             Path incomingDir = incomingRoot.resolve(store.getName());
+            Path archiveDir = archiveRoot.resolve(store.getName());
+            Path errorDir = errorRoot.resolve(store.getName());
 
             Files.createDirectories(incomingDir);
+            Files.createDirectories(archiveDir);
+            Files.createDirectories(errorDir);
 
             WatchKey key = incomingDir.register(
                     watchService,
@@ -54,7 +58,9 @@ public class CrossdockReportWatcher {
                     new StoreWatchContext(
                             store.getClientId(),
                             store.getName(),
-                            incomingDir
+                            incomingDir,
+                            archiveDir,
+                            errorDir
                     )
             );
         }
@@ -75,6 +81,7 @@ public class CrossdockReportWatcher {
 
                 Thread.sleep(1000);
                 reportService.processCrossdockReport(context.clientId, fullPath);
+                Files.move(fullPath, context.archiveDir.resolve(fileName));
             }
             key.reset();
         }
@@ -84,6 +91,8 @@ public class CrossdockReportWatcher {
     private record StoreWatchContext(
             String clientId,
             String shopName,
-            Path incomingDir) {
+            Path incomingDir,
+            Path archiveDir,
+            Path errorDir) {
     }
 }
