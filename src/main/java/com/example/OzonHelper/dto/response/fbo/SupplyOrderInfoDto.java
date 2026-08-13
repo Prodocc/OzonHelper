@@ -10,6 +10,8 @@ import lombok.Data;
 public class SupplyOrderInfoDto {
     @JsonProperty("is_crossdock")
     private boolean isCrossDock;
+    @JsonProperty("macrolocal_cluster_id")
+    private long clusterId;
     @JsonProperty("bundle_id")
     private String bundleId;
     @JsonProperty("state")
@@ -17,7 +19,7 @@ public class SupplyOrderInfoDto {
     @JsonProperty("storage_warehouse")
     private WarehouseDto receivingWarehouse;
     @JsonProperty("supply_id")
-    private long supplyId;
+    private String supplyId;
     @JsonProperty("supply_tags.is_utd")
     private boolean isUtd;
 }

@@ -5,6 +5,7 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.*;
 import org.springframework.stereotype.Component;
 
+import javax.swing.plaf.PanelUI;
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -71,12 +72,18 @@ public class GoogleClient {
                 batchUpdateRequest).execute();
     }
 
-    public List<List<Object>> fetchFreshData(String spreadSheetId, String range) throws IOException {
-        return sheetsService.spreadsheets().values().get(spreadSheetId, range).execute().getValues();
-    }
-
     public List<Sheet> getSheets(String spreadSheetId) throws IOException {
         return sheetsService.spreadsheets().get(spreadSheetId).execute().getSheets();
+    }
+
+    public int hasSheet(String spreadSheetId, String title) throws IOException {
+        List<Sheet> sheets = getSheets(spreadSheetId);
+        for (Sheet sheet : sheets) {
+            if (title.equals(sheet.getProperties().getTitle())) {
+                return sheet.getProperties().getSheetId();
+            }
+        }
+        return -1;
     }
 
     public int getSheetIdByTitle(String sheetTitle, String spreadSheetId) throws IOException {
@@ -244,6 +251,77 @@ public class GoogleClient {
         String endColLetter = colIndexToLetter(endColIndex);
 
         return new SheetColumnRange(sheetName, startColLetter, endColLetter);
+    }
+
+    public int createSheet(String spreadSheetId, String title) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+        AddSheetRequest addSheetRequest = new AddSheetRequest().setProperties(new SheetProperties().setTitle(title));
+        Request request = new Request().setAddSheet(addSheetRequest);
+
+        batchUpdateRequest.setRequests(List.of(request));
+
+        BatchUpdateSpreadsheetResponse execute = sheetsService.spreadsheets()
+                .batchUpdate(spreadSheetId, batchUpdateRequest)
+                .execute();
+
+        return execute.getReplies().get(0).getAddSheet().getProperties().getSheetId();
+    }
+
+    public void formatCrossDockSheet(String spreadSheetId, int sheetId) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+
+        RepeatCellRequest repeatCellRequest = new RepeatCellRequest().setFields(
+                "userEnteredFormat.textFormat.fontFamily," +
+                        "userEnteredFormat.textFormat.fontSize," +
+                        "userEnteredFormat.textFormat.bold"
+        );
+        GridRange gridRange = new GridRange();
+        CellData cellData = new CellData();
+        CellFormat cellFormat = new CellFormat();
+        TextFormat textFormat = new TextFormat()
+                .setFontFamily("Arial")
+                .setFontSize(12)
+                .setBold(true);
+
+        cellFormat.setTextFormat(textFormat);
+        cellData.setUserEnteredFormat(cellFormat);
+
+        gridRange.setSheetId(sheetId);
+        gridRange.setStartColumnIndex(0);
+        gridRange.setEndColumnIndex(8);
+        gridRange.setStartRowIndex(0);
+        gridRange.setEndRowIndex(1);
+
+        repeatCellRequest.setCell(cellData);
+        repeatCellRequest.setRange(gridRange);
+
+        Request repeatRequest = new Request();
+        repeatRequest.setRepeatCell(repeatCellRequest);
+
+        UpdateDimensionPropertiesRequest dimensionPropertiesRequest = new UpdateDimensionPropertiesRequest();
+        DimensionProperties dimensionProperties = new DimensionProperties();
+
+        DimensionRange dimensionRange = new DimensionRange();
+        dimensionRange.setSheetId(sheetId);
+        dimensionRange.setDimension("COLUMNS");
+        dimensionRange.setStartIndex(0);
+        dimensionRange.setEndIndex(8);
+
+        dimensionProperties.setPixelSize(200);
+
+        dimensionPropertiesRequest.setRange(dimensionRange);
+        dimensionPropertiesRequest.setProperties(dimensionProperties);
+        dimensionPropertiesRequest.setFields("pixelSize");
+
+        Request dimensionRequest = new Request();
+        dimensionRequest.setUpdateDimensionProperties(dimensionPropertiesRequest);
+
+
+        batchUpdateRequest.setRequests(List.of(repeatRequest, dimensionRequest));
+
+        sheetsService.spreadsheets()
+                .batchUpdate(spreadSheetId, batchUpdateRequest)
+                .execute();
     }
 
     private record SheetColumnRange(String sheetName, String startColLetter, String endColLetter) {

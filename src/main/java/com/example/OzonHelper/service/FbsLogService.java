@@ -48,7 +48,7 @@ public class FbsLogService {
         String title = getLogListTitle(spreadSheetId);
         String range = getLogListRange(title, LOG_LIST_RANGE);
 
-        List<List<Object>> rawData = googleClient.fetchFreshData(spreadSheetId, range);
+        List<List<Object>> rawData = googleClient.readTable(spreadSheetId, range);
 
         normalizer.normalizeData(rawData, FBS_LOG_LIST_ROW_SIZE);
 

@@ -16,7 +16,8 @@ public enum OzonApiEndpoint {
     POSTINGS_REPORT_CREATE("/v1/report/postings/create"),
     POSTINGS_REPORT_INFO("/v1/report/info"),
     CHATS_LIST("/v3/chat/list"),
-    CHAT_HISTORY("/v3/chat/history");
+    CHAT_HISTORY("/v3/chat/history"),
+    ACCRUAL_TYPES("/v1/finance/accrual/types");
 
     private final String path;
 

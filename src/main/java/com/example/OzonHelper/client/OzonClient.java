@@ -23,7 +23,10 @@ import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.dto.response.report.AccrualDto;
+import com.example.OzonHelper.dto.response.report.GetAccrualTypeResponse;
 import com.example.OzonHelper.enums.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 
@@ -355,6 +358,15 @@ public class OzonClient implements MarketplaceClient {
         );
 
         return mapper.readValue(response.body(), GetChatHistoryResponse.class).getMessages();
+    }
+
+    public List<AccrualDto> getAvailableAccruals() throws IOException, InterruptedException {
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.ACCRUAL_TYPES.getFullUrl(apiHost),
+                HttpRequest.BodyPublishers.noBody()
+        );
+
+        return mapper.readValue(response.body(), GetAccrualTypeResponse.class).getAccruals();
     }
 
 
