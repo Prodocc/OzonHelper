@@ -74,14 +74,14 @@ public class ReportService {
         System.out.println("fullPath = " + fullPath);
 
         // read excel file
-        List<List<String>> lists = excelParser.readCSV(fullPath);
+        List<List<String>> excelList = excelParser.readCSV(fullPath);
 
         //create accrualsDtoList
         List<PostingAccrualDto> accrualDtos = new ArrayList<>();
 
         //populate accrualsDtoList
         //TODO parameterize getting fields
-        for (List<String> list : lists) {
+        for (List<String> list : excelList) {
             PostingAccrualDto dto = new PostingAccrualDto();
             dto.setSupplyId(list.get(0));
             dto.setSum(list.get(15));
@@ -165,28 +165,28 @@ public class ReportService {
         }
 
         int i = 0;
-        Map<String, SupplyOrder> bySupplyId = new HashMap<>();
-        Map<String, SupplyOrder> byBundleId = new HashMap<>();
+        Map<String, Supply> bySupplyId = new HashMap<>();
+        Map<String, Supply> byBundleId = new HashMap<>();
         for (SupplyOrderDto dto : supplyOrderDtos) {
-            for (SupplyOrderInfoDto infoDto : dto.getSupplies()) {
+            for (SupplyInfoDto infoDto : dto.getSupplies()) {
                 String supplyId = infoDto.getSupplyId();
                 if (!accrualsBySupplyId.containsKey(supplyId)) {
                     continue;
                 }
                 System.out.println(i++);
-                SupplyOrder supplyOrder = new SupplyOrder();
-                supplyOrder.setCreatedDate(dto.getCreationDate());
-                supplyOrder.setOrderId(dto.getOrderId());
-                supplyOrder.setOrderNumber(dto.getOrderNumber());
-                supplyOrder.setState(infoDto.getSupplyState());
-                supplyOrder.setBundle_id(infoDto.getBundleId());
-                supplyOrder.setSupplyId(supplyId);
-                supplyOrder.setClusterName(clustersById.get(infoDto.getClusterId()));
+                Supply supply = new Supply();
+                supply.setCreatedDate(dto.getCreationDate());
+                supply.setOrderId(dto.getOrderId());
+                supply.setOrderNumber(dto.getOrderNumber());
+                supply.setState(infoDto.getSupplyState());
+                supply.setBundle_id(infoDto.getBundleId());
+                supply.setSupplyId(supplyId);
+                supply.setClusterName(clustersById.get(infoDto.getClusterId()));
 
-                bySupplyId.put(supplyId, supplyOrder);
-                byBundleId.put(supplyOrder.getBundle_id(), supplyOrder);
+                bySupplyId.put(supplyId, supply);
+                byBundleId.put(supply.getBundle_id(), supply);
 
-                accrualsBySupplyId.get(supplyId).setSupplyOrder(supplyOrder);
+                accrualsBySupplyId.get(supplyId).setSupplyOrder(supply);
             }
         }
 

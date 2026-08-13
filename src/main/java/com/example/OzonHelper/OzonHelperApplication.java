@@ -2,14 +2,12 @@ package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.domain.PostingAccrual;
-import com.example.OzonHelper.domain.SupplyOrder;
 import com.example.OzonHelper.domain.SupplyOrderComposition;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderCompositionDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
-import com.example.OzonHelper.dto.response.fbo.SupplyOrderInfoDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrdersPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
 import com.example.OzonHelper.enums.AccrualType;

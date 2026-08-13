@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class SupplyOrder {
+public class Supply {
     private LocalDateTime createdDate;
     private long orderId;
     private String orderNumber;
