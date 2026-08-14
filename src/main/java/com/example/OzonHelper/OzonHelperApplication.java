@@ -6,11 +6,13 @@ import com.example.OzonHelper.domain.SupplyOrderComposition;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
+import com.example.OzonHelper.dto.response.fbo.ClusterDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderCompositionDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrdersPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
 import com.example.OzonHelper.enums.AccrualType;
+import com.example.OzonHelper.enums.ClusterType;
 import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
@@ -42,8 +44,8 @@ public class OzonHelperApplication {
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 //
-//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
-//        OzonClient client = ozonClients.get("1140235");
+        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+        OzonClient client = ozonClients.get("1140235");
 
         CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
         crossdockReportWatcher.watch();

@@ -14,6 +14,6 @@ public class Supply {
     private String supplyId;
     private SupplyOrderComposition composition;
     private SupplyState state;
-    private String bundle_id;
+    private String bundleId;
     private String clusterName;
 }

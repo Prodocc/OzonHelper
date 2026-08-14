@@ -132,6 +132,7 @@ public enum AccrualType {
 
     @Getter
     private final String apiValue;
+    @Getter
     private final String description;
     private final int id;
 

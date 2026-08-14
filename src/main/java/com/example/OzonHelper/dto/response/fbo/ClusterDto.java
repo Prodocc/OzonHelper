@@ -1,5 +1,6 @@
 package com.example.OzonHelper.dto.response.fbo;
 
+import com.example.OzonHelper.enums.ClusterType;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -15,4 +16,6 @@ public class ClusterDto {
     private long macrolocalClusterId;
     @JsonProperty("name")
     private String name;
+    @JsonProperty("type")
+    private ClusterType type;
 }

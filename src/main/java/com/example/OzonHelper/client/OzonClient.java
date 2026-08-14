@@ -181,13 +181,15 @@ public class OzonClient implements MarketplaceClient {
         return getFbsPostingList(since, to, status).size() > 1;
     }
 
-    public List<ClusterDto> getClusters() throws IOException, InterruptedException {
+    public List<ClusterDto> getClusters(ClusterType type) throws IOException, InterruptedException {
         GetClustersRequest request = new GetClustersRequest();
-        request.setClusterType(ClusterType.CLUSTER_TYPE_OZON.toString());
+        request.setClusterType(type.toString());
 
         HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_CLUSTERS_LIST.getFullUrl(apiHost),
                 request);
+
+        System.out.println(response.body());
 
         return mapper.readValue(response.body(), GetClustersResponse.class).getClusters();
     }

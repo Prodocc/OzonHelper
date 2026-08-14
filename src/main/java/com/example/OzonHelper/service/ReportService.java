@@ -10,6 +10,8 @@ import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.enums.AccrualType;
+import com.example.OzonHelper.enums.ClusterType;
 import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.exceptions.ReportCreatingException;
 import com.example.OzonHelper.parser.ReportCSVParser;
@@ -27,7 +29,6 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
@@ -43,6 +44,10 @@ public class ReportService {
     private final String CROSSDOCK_REPORT_SPREADSHEET_KEY = "crossdock-report-table";
     private final String DAILY_REPORT_SHEET_NAME = "Лист1";
     private final String WEEKLY_REPORT_SHEET_NAME = "Продажи еженедельные";
+    private final int ACCRUAL_REPORT_SUPPLY_ID_FIELD_INDEX = 0;
+    private final int ACCRUAL_REPORT_TYPE_FIELD_INDEX = 3;
+    private final int ACCRUAL_REPORT_CARGO_SPACE_COUNT_FIELD_INDEX = 7;
+    private final int ACCRUAL_REPORT_SUM_FIELD_INDEX = 15;
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
@@ -51,13 +56,14 @@ public class ReportService {
     private final ReportCSVParser csvParser;
     private final ReportExcelParser excelParser;
     private final PostingDtoMapper postingDtoMapper;
+    private final SupplyOrderCompositionMapper compositionMapper;
     private final PostingAccrualMapper postingAccrualMapper;
     private Map<Long, String> clustersById;
 
     public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties,
                          GoogleClient googleClient, SheetAnalyzer sheetAnalyzer,
                          ReportCSVParser csvParser, ReportExcelParser excelParser,
-                         PostingDtoMapper postingDtoMapper, PostingAccrualMapper postingAccrualMapper) {
+                         PostingDtoMapper postingDtoMapper, PostingAccrualMapper postingAccrualMapper, SupplyOrderCompositionMapper compositionMapper) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
@@ -66,6 +72,7 @@ public class ReportService {
         this.excelParser = excelParser;
         this.postingDtoMapper = postingDtoMapper;
         this.postingAccrualMapper = postingAccrualMapper;
+        this.compositionMapper = compositionMapper;
     }
 
     public void processCrossdockReport(String clientId, Path fullPath) throws CsvValidationException, IOException, InterruptedException {
@@ -73,161 +80,45 @@ public class ReportService {
         System.out.println("clientId = " + clientId);
         System.out.println("fullPath = " + fullPath);
 
-        // read excel file
         List<List<String>> excelList = excelParser.readCSV(fullPath);
 
-        //create accrualsDtoList
-        List<PostingAccrualDto> accrualDtos = new ArrayList<>();
+        List<PostingAccrualDto> accrualDtos = buildAccrualsDtos(excelList);
 
-        //populate accrualsDtoList
-        //TODO parameterize getting fields
-        for (List<String> list : excelList) {
-            PostingAccrualDto dto = new PostingAccrualDto();
-            dto.setSupplyId(list.get(0));
-            dto.setSum(list.get(15));
-            dto.setType(list.get(3));
-            dto.setCargoSpaceCount(list.get(7));
-            accrualDtos.add(dto);
-        }
-
-        // filter accrualsDtoList by crossdock
-        List<PostingAccrualDto> filteredByCrossDockAccrualsDto = accrualDtos
+        List<PostingAccrualDto> crossDockAccrualsDtos = accrualDtos
                 .stream()
-                .filter(postingAccrualDto -> postingAccrualDto.getType().equals("Кросс-докинг")).toList();
+                .filter(postingAccrualDto -> postingAccrualDto.getType().equals(AccrualType.CROSSDOCK.getDescription())).toList();
 
+        List<PostingAccrual> crossDockAccruals = buildCrossDockAccruals(crossDockAccrualsDtos, client.getShopName(), fullPath);
 
-        //map to PostingAccruals
-        List<PostingAccrual> crossDockAccruals = new ArrayList<>();
+        Map<String, PostingAccrual> accrualsBySupplyId = aggregateAccrualsBySupplyId(crossDockAccruals);
 
-        for (PostingAccrualDto postingAccrualDto : filteredByCrossDockAccrualsDto) {
-            PostingAccrual accrual;
-            try {
-                accrual = postingAccrualMapper.mapToModel(postingAccrualDto);
-                crossDockAccruals.add(accrual);
-            } catch (IllegalArgumentException e) {
-                System.err.println("ShopName: " + client.getShopName());
-                System.err.println("FileName: " + fullPath);
-                System.err.println("postingAccrualDto: " + postingAccrualDto);
-                System.err.println(e.getMessage());
-            }
-        }
+        List<String> supplyOrderIds = getAllSupplyOrderIds(client);
 
-        //aggregate postingAccruals by supplyIdAndSum
-        Map<String, PostingAccrual> accrualsBySupplyId = new HashMap<>();
-        for (PostingAccrual accrual : crossDockAccruals) {
-            accrualsBySupplyId.compute(accrual.getSupplyId(), (s, postingAccrual) -> {
-                if (postingAccrual == null) {
-                    PostingAccrual aggregate = new PostingAccrual();
-                    aggregate.setSupplyId(accrual.getSupplyId());
-                    aggregate.setSum(accrual.getSum());
-                    return aggregate;
-                }
-
-                postingAccrual.setSum(
-                        postingAccrual.getSum().add(accrual.getSum())
-                );
-
-                return postingAccrual;
-            });
-        }
-
-        // get all supplies from the shop
-        List<String> supplyOrderIds = new ArrayList<>();
-        SupplyOrdersPage page;
-        String lastId = null;
-        do {
-            page = client.getSupplyOrdersIds(lastId, SupplyState.COMPLETED);
-            supplyOrderIds.addAll(page.orderIds());
-            lastId = page.nextCursor();
-            System.out.println("lastId = " + lastId);
-            System.out.println("page.orderIds().size() = " + page.orderIds().size());
-            Thread.sleep(1000);
-        } while (page.orderIds().size() >= 100);
-
-        System.out.println(supplyOrderIds.size());
-
-        int orderIdsMaxLimit = 50;
-        List<SupplyOrderDto> supplyOrderDtos
-                = new ArrayList<>();
-        for (int i = 0; i < supplyOrderIds.size(); i += orderIdsMaxLimit) {
-            int to = Math.min(i + orderIdsMaxLimit, supplyOrderIds.size());
-            System.out.println("i = " + i);
-            System.out.println("to = " + to);
-            supplyOrderDtos
-                    .addAll(client.getSupplyOrders(supplyOrderIds.subList(i, to)));
-            Thread.sleep(1000);
-        }
+        List<SupplyOrderDto> supplyOrderDtos = getSupplyOrderDtos(client, supplyOrderIds);
 
         if (clustersById == null) {
-            clustersById = new HashMap<>();
-            List<ClusterDto> clusters = client.getClusters();
-            clusters.forEach(clusterDto -> clustersById.put(clusterDto.getMacrolocalClusterId(), clusterDto.getName()));
+            clustersById = loadClusterNamesById(client);
         }
 
-        int i = 0;
-        Map<String, Supply> bySupplyId = new HashMap<>();
-        Map<String, Supply> byBundleId = new HashMap<>();
-        for (SupplyOrderDto dto : supplyOrderDtos) {
-            for (SupplyInfoDto infoDto : dto.getSupplies()) {
-                String supplyId = infoDto.getSupplyId();
-                if (!accrualsBySupplyId.containsKey(supplyId)) {
-                    continue;
-                }
-                System.out.println(i++);
-                Supply supply = new Supply();
-                supply.setCreatedDate(dto.getCreationDate());
-                supply.setOrderId(dto.getOrderId());
-                supply.setOrderNumber(dto.getOrderNumber());
-                supply.setState(infoDto.getSupplyState());
-                supply.setBundle_id(infoDto.getBundleId());
-                supply.setSupplyId(supplyId);
-                supply.setClusterName(clustersById.get(infoDto.getClusterId()));
+        Map<String, Supply> byBundleId = buildSuppliesByBundleId(accrualsBySupplyId, supplyOrderDtos, clustersById);
 
-                bySupplyId.put(supplyId, supply);
-                byBundleId.put(supply.getBundle_id(), supply);
+        loadSupplyCompositions(byBundleId, client);
 
-                accrualsBySupplyId.get(supplyId).setSupplyOrder(supply);
-            }
-        }
-
-        SupplyOrderCompositionMapper compositionMapper = new SupplyOrderCompositionMapper();
-
-        for (String bundleId : byBundleId.keySet()) {
-            SupplyOrderCompositionDto compositionDto = client.getSupplyOrdersComposition(List.of(bundleId));
-            byBundleId.get(bundleId).setComposition(compositionMapper.mapToModel(compositionDto));
-            Thread.sleep(300);
-        }
-
-        System.out.println("accrualsBySupplyId.size() = " + accrualsBySupplyId.size());
-        System.out.println("bySupplyId.size() = " + bySupplyId.size());
-
-
-        // get ready google sheet spreadsheet
         String spreadSheetId = sheetsProperties.getSheets().get(CROSSDOCK_REPORT_SPREADSHEET_KEY);
         String title = buildCrossDockNewSheetTitle(fullPath.getFileName().toString());
-        System.out.println("title = " + title);
-        ;
-//
-        int sheetId = googleClient.hasSheet(spreadSheetId, title);
-        if (sheetId < 0) {
-            sheetId = googleClient.createSheet(spreadSheetId, title);
-            googleClient.writeTable(getCrossDockColumnHeadingData(),
-                    spreadSheetId, title + "!A1:H1");
-        }
-        googleClient.formatCrossDockSheet(spreadSheetId, sheetId);
-//        buildData
+
+        prepareCrossDockSheet(spreadSheetId, title);
+
         List<List<Object>> rawData = buildCrossDockData(client.getShopName(), accrualsBySupplyId);
-//        find next empty row
-        List<List<Object>> table = googleClient.readTable(spreadSheetId, "'" + title + "'");
-        int nextEmptyRowNumber = sheetAnalyzer.findNextEmptyRowNumber(table);
-//         build writingRange
-        String range = buildCrossDockRange(title, nextEmptyRowNumber, rawData.size());
-        System.out.println("range = " + range);
-//         populate data
-        googleClient.writeTable(rawData, spreadSheetId, range);
+
+        if (rawData.isEmpty()) {
+            System.err.println("There is no data for shopName:" + client.getShopName());
+            return;
+        }
+
+        appendCrossDockData(spreadSheetId, title, rawData);
     }
 
-    //check and modify if dataSize = 0
     private String buildCrossDockRange(String title, int startRow, int dataSize) {
         int endRow = startRow + dataSize - 1;
         return "'" + title + "'" + "!A" + startRow + ":H" + endRow;
@@ -237,13 +128,14 @@ public class ReportService {
         List<List<Object>> result = new ArrayList<>();
 
         for (PostingAccrual accrual : accrualsBySupplyId.values()) {
+            int totalItemsQuantity = accrual.getSupply().getComposition().getItems().stream().mapToInt(Item::getQuantity).sum();
             BigDecimal sum = accrual.getSum();
-            for (Item item : accrual.getSupplyOrder().getComposition().getItems()) {
-                BigDecimal perItem = sum.divide(new BigDecimal(item.getQuantity()), RoundingMode.FLOOR);
+            BigDecimal perItem = sum.divide(new BigDecimal(totalItemsQuantity), RoundingMode.FLOOR);
+            for (Item item : accrual.getSupply().getComposition().getItems()) {
                 List<Object> row = List.of(
                         shopName,
                         accrual.getSupplyId(),
-                        accrual.getSupplyOrder().getClusterName(),
+                        accrual.getSupply().getClusterName(),
                         item.getSku(),
                         item.getArticle(),
                         item.getQuantity(),
@@ -268,6 +160,149 @@ public class ReportService {
         return endOfPeriod.getMonth().getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("ru"))
                 + " "
                 + endOfPeriod.getYear();
+    }
+
+    private List<PostingAccrualDto> buildAccrualsDtos(List<List<String>> excelList) {
+        List<PostingAccrualDto> result = new ArrayList<>();
+        for (List<String> list : excelList) {
+            PostingAccrualDto dto = new PostingAccrualDto();
+            dto.setSupplyId(list.get(ACCRUAL_REPORT_SUPPLY_ID_FIELD_INDEX));
+            dto.setSum(list.get(ACCRUAL_REPORT_SUM_FIELD_INDEX));
+            dto.setType(list.get(ACCRUAL_REPORT_TYPE_FIELD_INDEX));
+            dto.setCargoSpaceCount(list.get(ACCRUAL_REPORT_CARGO_SPACE_COUNT_FIELD_INDEX));
+            result.add(dto);
+        }
+        return result;
+    }
+
+    private List<PostingAccrual> buildCrossDockAccruals(List<PostingAccrualDto> dtos, String shopName, Path fullPath) {
+        List<PostingAccrual> result = new ArrayList<>();
+        for (PostingAccrualDto postingAccrualDto : dtos) {
+            PostingAccrual accrual;
+            try {
+                accrual = postingAccrualMapper.mapToModel(postingAccrualDto);
+                result.add(accrual);
+            } catch (IllegalArgumentException e) {
+                System.err.println("ShopName: " + shopName);
+                System.err.println("FileName: " + fullPath);
+                System.err.println("postingAccrualDto: " + postingAccrualDto);
+                System.err.println(e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    private Map<String, PostingAccrual> aggregateAccrualsBySupplyId(List<PostingAccrual> accruals) {
+        Map<String, PostingAccrual> result = new HashMap<>();
+        for (PostingAccrual accrual : accruals) {
+            result.compute(accrual.getSupplyId(), (s, postingAccrual) -> {
+                if (postingAccrual == null) {
+                    PostingAccrual aggregate = new PostingAccrual();
+                    aggregate.setSupplyId(accrual.getSupplyId());
+                    aggregate.setSum(accrual.getSum());
+                    return aggregate;
+                }
+
+                postingAccrual.setSum(
+                        postingAccrual.getSum().add(accrual.getSum())
+                );
+
+                return postingAccrual;
+            });
+        }
+        return result;
+    }
+
+    private List<String> getAllSupplyOrderIds(OzonClient client) throws IOException, InterruptedException {
+        List<String> result = new ArrayList<>();
+        SupplyOrdersPage page;
+        String lastId = null;
+        do {
+            page = client.getSupplyOrdersIds(lastId, SupplyState.COMPLETED);
+            result.addAll(page.orderIds());
+            lastId = page.nextCursor();
+            Thread.sleep(1000);
+        } while (page.orderIds().size() >= 100);
+
+        return result;
+    }
+
+    private List<SupplyOrderDto> getSupplyOrderDtos(OzonClient client, List<String> supplyOrderIds) throws IOException, InterruptedException {
+        int orderIdsMaxLimit = 50;
+        List<SupplyOrderDto> result = new ArrayList<>();
+        for (int i = 0; i < supplyOrderIds.size(); i += orderIdsMaxLimit) {
+            int to = Math.min(i + orderIdsMaxLimit, supplyOrderIds.size());
+            result.addAll(client.getSupplyOrders(supplyOrderIds.subList(i, to)));
+            Thread.sleep(1000);
+        }
+        return result;
+    }
+
+    private Map<Long, String> loadClusterNamesById(OzonClient client) throws IOException, InterruptedException {
+        Map<Long, String> result = new HashMap<>();
+        List<ClusterDto> clusters = new ArrayList<>();
+
+        clusters.addAll(client.getClusters(ClusterType.CLUSTER_TYPE_OZON));
+        clusters.addAll(client.getClusters(ClusterType.CLUSTER_TYPE_CIS));
+
+        clusters.forEach(clusterDto -> result.put(clusterDto.getMacrolocalClusterId(), clusterDto.getName()));
+
+        return result;
+    }
+
+    private Map<String, Supply> buildSuppliesByBundleId(Map<String, PostingAccrual> accrualsBySupplyId, List<SupplyOrderDto> supplyOrderDtos,
+                                                        Map<Long, String> clustersById) {
+        Map<String, Supply> result = new HashMap<>();
+        for (SupplyOrderDto dto : supplyOrderDtos) {
+            for (SupplyInfoDto infoDto : dto.getSupplies()) {
+                String supplyId = infoDto.getSupplyId();
+                if (!accrualsBySupplyId.containsKey(supplyId)) {
+                    continue;
+                }
+                Supply supply = new Supply();
+                supply.setCreatedDate(dto.getCreationDate());
+                supply.setOrderId(dto.getOrderId());
+                supply.setOrderNumber(dto.getOrderNumber());
+                supply.setState(infoDto.getSupplyState());
+                supply.setBundleId(infoDto.getBundleId());
+                supply.setSupplyId(supplyId);
+                supply.setClusterName(clustersById.get(infoDto.getClusterId()));
+
+                result.put(supply.getBundleId(), supply);
+
+                accrualsBySupplyId.get(supplyId).setSupply(supply);
+            }
+        }
+
+        return result;
+    }
+
+    private void loadSupplyCompositions(Map<String, Supply> byBundleId, OzonClient client) throws IOException, InterruptedException {
+        for (String bundleId : byBundleId.keySet()) {
+            SupplyOrderCompositionDto compositionDto = client.getSupplyOrdersComposition(List.of(bundleId));
+            byBundleId.get(bundleId).setComposition(compositionMapper.mapToModel(compositionDto));
+            Thread.sleep(300);
+        }
+    }
+
+    private void prepareCrossDockSheet(String spreadSheetId, String title) throws IOException {
+        int sheetId = googleClient.hasSheet(spreadSheetId, title);
+        if (sheetId < 0) {
+            sheetId = googleClient.createSheet(spreadSheetId, title);
+            googleClient.writeTable(getCrossDockColumnHeadingData(),
+                    spreadSheetId, "'" + title + "'" + "!A1:H1");
+            googleClient.formatCrossDockSheet(spreadSheetId, sheetId);
+        }
+    }
+
+    public void appendCrossDockData(String spreadSheetId, String title, List<List<Object>> rawData) throws IOException {
+        //      find next empty row
+        List<List<Object>> table = googleClient.readTable(spreadSheetId, "'" + title + "'");
+        int nextEmptyRowNumber = sheetAnalyzer.findNextEmptyRowNumber(table);
+//      build writingRange
+        String range = buildCrossDockRange(title, nextEmptyRowNumber, rawData.size());
+//      populate data
+        googleClient.writeTable(rawData, spreadSheetId, range);
     }
 
     public void updateDailyReport(boolean weekly) throws Exception {
