@@ -4,11 +4,13 @@ import com.example.OzonHelper.domain.Item;
 import com.example.OzonHelper.domain.SupplyOrderComposition;
 import com.example.OzonHelper.dto.response.fbo.ItemDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderCompositionDto;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+@Component
 public class SupplyOrderCompositionMapper {
 
     public SupplyOrderComposition mapToModel(SupplyOrderCompositionDto dto) {

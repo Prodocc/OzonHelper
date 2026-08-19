@@ -129,6 +129,8 @@ public class OzonClient implements MarketplaceClient {
                 OzonApiEndpoint.SUPPLY_ORDER_LIST.getFullUrl(apiHost),
                 request);
 
+        System.out.println(response.body());
+
         GetSupplyOrdersResponse getSupplyOrdersResponse = mapper.readValue(response.body(), GetSupplyOrdersResponse.class);
         return new SupplyOrdersPage(getSupplyOrdersResponse.getSupplyOrderIds(), getSupplyOrdersResponse.getLastId());
     }
@@ -188,8 +190,6 @@ public class OzonClient implements MarketplaceClient {
         HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_CLUSTERS_LIST.getFullUrl(apiHost),
                 request);
-
-        System.out.println(response.body());
 
         return mapper.readValue(response.body(), GetClustersResponse.class).getClusters();
     }

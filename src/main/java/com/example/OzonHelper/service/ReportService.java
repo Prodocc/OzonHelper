@@ -17,10 +17,13 @@ import com.example.OzonHelper.exceptions.ReportCreatingException;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
 import com.example.OzonHelper.util.SheetAnalyzer;
+import com.google.api.services.sheets.v4.model.Sheet;
 import com.opencsv.exceptions.CsvException;
 import com.opencsv.exceptions.CsvValidationException;
+import org.springframework.lang.Contract;
 import org.springframework.stereotype.Service;
 
+import javax.lang.model.SourceVersion;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -29,20 +32,21 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
 
 @Service
 public class ReportService {
+    private static final int WEEKLY_REPORT_SHEET_INDEX = 1;
     private final String REPORT_RANGE = "A1:AH1000";
     private final int SKU_START_ROW_INDEX = 2;
     private final int CLIENT_ID_COLUMN_INDEX = 0;
     private final int SKU_COLUMN_INDEX = 2;
-    private final String DAILY_REPORT_SPREADSHEET_KEY = "daily-report-table";
-    private final String WEEKLY_REPORT_SPREADSHEET_KEY = "weekly-report-table";
+    private final String SALES_REPORT_SPREADSHEET_KEY = "sales-report-table";
     private final String CROSSDOCK_REPORT_SPREADSHEET_KEY = "crossdock-report-table";
-    private final String DAILY_REPORT_SHEET_NAME = "Лист1";
+    private final String DAILY_REPORT_SHEET_NAME = "Продажи ежедневные";
     private final String WEEKLY_REPORT_SHEET_NAME = "Продажи еженедельные";
     private final int ACCRUAL_REPORT_SUPPLY_ID_FIELD_INDEX = 0;
     private final int ACCRUAL_REPORT_TYPE_FIELD_INDEX = 3;
@@ -81,41 +85,29 @@ public class ReportService {
         System.out.println("fullPath = " + fullPath);
 
         List<List<String>> excelList = excelParser.readCSV(fullPath);
-
         List<PostingAccrualDto> accrualDtos = buildAccrualsDtos(excelList);
-
         List<PostingAccrualDto> crossDockAccrualsDtos = accrualDtos
                 .stream()
                 .filter(postingAccrualDto -> postingAccrualDto.getType().equals(AccrualType.CROSSDOCK.getDescription())).toList();
-
         List<PostingAccrual> crossDockAccruals = buildCrossDockAccruals(crossDockAccrualsDtos, client.getShopName(), fullPath);
-
         Map<String, PostingAccrual> accrualsBySupplyId = aggregateAccrualsBySupplyId(crossDockAccruals);
-
         List<String> supplyOrderIds = getAllSupplyOrderIds(client);
-
         List<SupplyOrderDto> supplyOrderDtos = getSupplyOrderDtos(client, supplyOrderIds);
 
         if (clustersById == null) {
             clustersById = loadClusterNamesById(client);
         }
-
         Map<String, Supply> byBundleId = buildSuppliesByBundleId(accrualsBySupplyId, supplyOrderDtos, clustersById);
-
         loadSupplyCompositions(byBundleId, client);
-
         String spreadSheetId = sheetsProperties.getSheets().get(CROSSDOCK_REPORT_SPREADSHEET_KEY);
         String title = buildCrossDockNewSheetTitle(fullPath.getFileName().toString());
-
         prepareCrossDockSheet(spreadSheetId, title);
-
         List<List<Object>> rawData = buildCrossDockData(client.getShopName(), accrualsBySupplyId);
 
         if (rawData.isEmpty()) {
             System.err.println("There is no data for shopName:" + client.getShopName());
             return;
         }
-
         appendCrossDockData(spreadSheetId, title, rawData);
     }
 
@@ -127,7 +119,9 @@ public class ReportService {
     private List<List<Object>> buildCrossDockData(String shopName, Map<String, PostingAccrual> accrualsBySupplyId) {
         List<List<Object>> result = new ArrayList<>();
 
+        int i = 0;
         for (PostingAccrual accrual : accrualsBySupplyId.values()) {
+            System.out.println(i++);
             int totalItemsQuantity = accrual.getSupply().getComposition().getItems().stream().mapToInt(Item::getQuantity).sum();
             BigDecimal sum = accrual.getSum();
             BigDecimal perItem = sum.divide(new BigDecimal(totalItemsQuantity), RoundingMode.FLOOR);
@@ -213,6 +207,11 @@ public class ReportService {
         return result;
     }
 
+    // TODO: get also supplies with REPORTS_CONFIRMATION_AWAITING status because
+    // accrual appears with this status, so
+    // if there are can be incorrect reports when
+    // there are no supply because - supply is still in status await-confirmation, and we get only with completed status
+    // but the accrual for this supply is already in excel report
     private List<String> getAllSupplyOrderIds(OzonClient client) throws IOException, InterruptedException {
         List<String> result = new ArrayList<>();
         SupplyOrdersPage page;
@@ -221,8 +220,10 @@ public class ReportService {
             page = client.getSupplyOrdersIds(lastId, SupplyState.COMPLETED);
             result.addAll(page.orderIds());
             lastId = page.nextCursor();
+            System.out.println("page.orderIds().size() = " + page.orderIds().size());
+            System.out.println("lastId = " + lastId);
             Thread.sleep(1000);
-        } while (page.orderIds().size() >= 100);
+        } while (page.orderIds().size() >= 100 && !lastId.isBlank());
 
         return result;
     }
@@ -296,12 +297,9 @@ public class ReportService {
     }
 
     public void appendCrossDockData(String spreadSheetId, String title, List<List<Object>> rawData) throws IOException {
-        //      find next empty row
         List<List<Object>> table = googleClient.readTable(spreadSheetId, "'" + title + "'");
         int nextEmptyRowNumber = sheetAnalyzer.findNextEmptyRowNumber(table);
-//      build writingRange
         String range = buildCrossDockRange(title, nextEmptyRowNumber, rawData.size());
-//      populate data
         googleClient.writeTable(rawData, spreadSheetId, range);
     }
 
@@ -317,7 +315,12 @@ public class ReportService {
         //get and aggregate fbo stocks
         clientSkuMap.forEach((clientId, skus) -> {
             try {
-                List<StockDto> stocks = loadAggregatedStocks(clientId, skus);
+
+                List<StockDto> stocks = List.of();
+                if (clients.get(clientId) != null) {
+                    stocks = loadAggregatedStocks(clientId, skus);
+                }
+
 
                 applyStocks(baseStockMap, stocks);
 
@@ -391,7 +394,7 @@ public class ReportService {
 
         resultList.forEach(System.out::println);
 
-        writeDailyReport(resultList);
+//        writeDailyReport(resultList);
 
         if (weekly) writeWeeklyReport(resultList);
     }
@@ -419,7 +422,7 @@ public class ReportService {
     }
 
     public Map<String, List<String>> readClientIdAndSkus() throws IOException {
-        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
+        String spreadSheetId = sheetsProperties.getSheets().get(SALES_REPORT_SPREADSHEET_KEY);
 
         List<List<Object>> rawData = googleClient.readTable(spreadSheetId, REPORT_RANGE);
 
@@ -629,15 +632,15 @@ public class ReportService {
         List<List<Object>> date = List.of(
                 List.of(LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
 
-        String spreadSheetId = sheetsProperties.getSheets().get(DAILY_REPORT_SPREADSHEET_KEY);
+        String spreadSheetId = sheetsProperties.getSheets().get(SALES_REPORT_SPREADSHEET_KEY);
 
         googleClient.writeTable(date, spreadSheetId, rangeForToday);  // write date
 
         googleClient.writeDailyReportItems(spreadSheetId, DAILY_REPORT_SHEET_NAME, reportItems); // write data
     }
 
-    private void writeWeeklyReport(List<StockItem> reportItems) throws Exception {
-        String rangeForWeeklyReport = getRangeForWeeklyReport();
+    public void writeWeeklyReport(List<StockItem> reportItems) throws Exception {
+        String rangeForWeeklyReport = getOrCreateRangeForWeeklyReport();
 
         DateTimeFormatter startFormatter = DateTimeFormatter.ofPattern("dd");
         DateTimeFormatter endFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -648,7 +651,7 @@ public class ReportService {
         List<List<Object>> date = List.of(
                 List.of(startOfTheWeek + "-" + endOfTheWeek));
 
-        String spreadSheetId = sheetsProperties.getSheets().get(WEEKLY_REPORT_SPREADSHEET_KEY);
+        String spreadSheetId = sheetsProperties.getSheets().get(SALES_REPORT_SPREADSHEET_KEY);
         String range = WEEKLY_REPORT_SHEET_NAME + "!" + rangeForWeeklyReport;
 
         googleClient.writeTable(date, spreadSheetId, range);  // write date
@@ -656,8 +659,8 @@ public class ReportService {
         googleClient.writeWeeklyReportItems(spreadSheetId, WEEKLY_REPORT_SHEET_NAME, reportItems, rangeForWeeklyReport);
     }
 
-    private String getRangeForWeeklyReport() throws IOException {
-        String spreadSheetId = sheetsProperties.getSheets().get(WEEKLY_REPORT_SPREADSHEET_KEY);
+    private String getOrCreateRangeForWeeklyReport() throws IOException {
+        String spreadSheetId = sheetsProperties.getSheets().get(SALES_REPORT_SPREADSHEET_KEY);
 
         String range = WEEKLY_REPORT_SHEET_NAME + "!" + "1:1";
 
@@ -672,9 +675,28 @@ public class ReportService {
         int startColIndex = 3 + firstRow.size() * 3;
         int endColIndex = startColIndex + 3;
 
+        System.out.println("startColIndex = " + startColIndex);
+        System.out.println("endColIndex = " + endColIndex);
+
+        List<Sheet> sheets = googleClient.getSheets(spreadSheetId);
+        Integer columnCount = sheets.get(WEEKLY_REPORT_SHEET_INDEX).getProperties().getGridProperties().getColumnCount();
+        System.out.println("columnCount = " + columnCount);
+
+        if (startColIndex >= columnCount - 3) {
+            prepareWeeklyReportColumns(spreadSheetId, startColIndex, endColIndex);
+        }
+
         String startCol = colIndexToLetter(startColIndex);
         String endCol = colIndexToLetter(endColIndex);
 
         return startCol + ":" + endCol;
+    }
+
+    private void prepareWeeklyReportColumns(String spreadSheetId, int startColIndex, int endColIndex) throws IOException {
+        int sheetId = googleClient.getSheetIdByTitle(WEEKLY_REPORT_SHEET_NAME, spreadSheetId);
+        // create 3 new columns
+        googleClient.insertColumns(spreadSheetId, sheetId, startColIndex, endColIndex);
+        googleClient.copyColumnFormat(spreadSheetId, sheetId, startColIndex, endColIndex);
+        googleClient.mergeHeaderCells(spreadSheetId, sheetId, startColIndex, endColIndex);
     }
 }
