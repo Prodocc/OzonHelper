@@ -85,12 +85,19 @@ public class ReportService {
         System.out.println("fullPath = " + fullPath);
 
         List<List<String>> excelList = excelParser.readCSV(fullPath);
+
         List<PostingAccrualDto> accrualDtos = buildAccrualsDtos(excelList);
+
         List<PostingAccrualDto> crossDockAccrualsDtos = accrualDtos
                 .stream()
                 .filter(postingAccrualDto -> postingAccrualDto.getType().equals(AccrualType.CROSSDOCK.getDescription())).toList();
+        if (crossDockAccrualsDtos.isEmpty()) return;
+
         List<PostingAccrual> crossDockAccruals = buildCrossDockAccruals(crossDockAccrualsDtos, client.getShopName(), fullPath);
+
         Map<String, PostingAccrual> accrualsBySupplyId = aggregateAccrualsBySupplyId(crossDockAccruals);
+        if (accrualsBySupplyId.isEmpty()) return;
+
         List<String> supplyOrderIds = getAllSupplyOrderIds(client);
         List<SupplyOrderDto> supplyOrderDtos = getSupplyOrderDtos(client, supplyOrderIds);
 
@@ -98,16 +105,21 @@ public class ReportService {
             clustersById = loadClusterNamesById(client);
         }
         Map<String, Supply> byBundleId = buildSuppliesByBundleId(accrualsBySupplyId, supplyOrderDtos, clustersById);
+
         loadSupplyCompositions(byBundleId, client);
+
         String spreadSheetId = sheetsProperties.getSheets().get(CROSSDOCK_REPORT_SPREADSHEET_KEY);
+
         String title = buildCrossDockNewSheetTitle(fullPath.getFileName().toString());
-        prepareCrossDockSheet(spreadSheetId, title);
+
         List<List<Object>> rawData = buildCrossDockData(client.getShopName(), accrualsBySupplyId);
 
         if (rawData.isEmpty()) {
             System.err.println("There is no data for shopName:" + client.getShopName());
             return;
         }
+
+        prepareCrossDockSheet(spreadSheetId, title);
         appendCrossDockData(spreadSheetId, title, rawData);
     }
 
