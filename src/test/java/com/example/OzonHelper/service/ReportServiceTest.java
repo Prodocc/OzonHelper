@@ -13,6 +13,7 @@ import com.example.OzonHelper.enums.ClusterType;
 import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
+import com.example.OzonHelper.service.report.crossdock.CrossDockDataBuilder;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import com.opencsv.exceptions.CsvValidationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,7 @@ public class ReportServiceTest {
     private PostingDtoMapper dtoMapper;
     private PostingAccrualMapper accrualMapper;
     private SupplyOrderCompositionMapper compositionMapper;
+    private CrossDockDataBuilder crossDockDataBuilder;
 
     @BeforeEach
     public void init() {
@@ -58,6 +60,7 @@ public class ReportServiceTest {
         dtoMapper = new PostingDtoMapper();
         accrualMapper = new PostingAccrualMapper();
         compositionMapper = new SupplyOrderCompositionMapper();
+        crossDockDataBuilder = new CrossDockDataBuilder();
         this.reportService = new ReportService(
                 clients,
                 properties,
@@ -67,7 +70,8 @@ public class ReportServiceTest {
                 excelParser,
                 dtoMapper,
                 accrualMapper,
-                compositionMapper
+                compositionMapper,
+                crossDockDataBuilder
         );
     }
 

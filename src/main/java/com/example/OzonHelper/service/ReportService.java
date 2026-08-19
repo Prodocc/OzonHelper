@@ -16,6 +16,7 @@ import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.exceptions.ReportCreatingException;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
+import com.example.OzonHelper.service.report.crossdock.CrossDockDataBuilder;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.opencsv.exceptions.CsvException;
@@ -62,12 +63,14 @@ public class ReportService {
     private final PostingDtoMapper postingDtoMapper;
     private final SupplyOrderCompositionMapper compositionMapper;
     private final PostingAccrualMapper postingAccrualMapper;
+    private final CrossDockDataBuilder crossDockDataBuilder;
     private Map<Long, String> clustersById;
 
     public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties,
                          GoogleClient googleClient, SheetAnalyzer sheetAnalyzer,
                          ReportCSVParser csvParser, ReportExcelParser excelParser,
-                         PostingDtoMapper postingDtoMapper, PostingAccrualMapper postingAccrualMapper, SupplyOrderCompositionMapper compositionMapper) {
+                         PostingDtoMapper postingDtoMapper, PostingAccrualMapper postingAccrualMapper, SupplyOrderCompositionMapper compositionMapper,
+                         CrossDockDataBuilder crossDockDataBuilder) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
@@ -77,6 +80,7 @@ public class ReportService {
         this.postingDtoMapper = postingDtoMapper;
         this.postingAccrualMapper = postingAccrualMapper;
         this.compositionMapper = compositionMapper;
+        this.crossDockDataBuilder = crossDockDataBuilder;
     }
 
     public void processCrossdockReport(String clientId, Path fullPath) throws CsvValidationException, IOException, InterruptedException {
@@ -112,7 +116,7 @@ public class ReportService {
 
         String title = buildCrossDockNewSheetTitle(fullPath.getFileName().toString());
 
-        List<List<Object>> rawData = buildCrossDockData(client.getShopName(), accrualsBySupplyId);
+        List<List<Object>> rawData = crossDockDataBuilder.buildCrossDockData(client.getShopName(), accrualsBySupplyId);
 
         if (rawData.isEmpty()) {
             System.err.println("There is no data for shopName:" + client.getShopName());
@@ -126,32 +130,6 @@ public class ReportService {
     private String buildCrossDockRange(String title, int startRow, int dataSize) {
         int endRow = startRow + dataSize - 1;
         return "'" + title + "'" + "!A" + startRow + ":H" + endRow;
-    }
-
-    private List<List<Object>> buildCrossDockData(String shopName, Map<String, PostingAccrual> accrualsBySupplyId) {
-        List<List<Object>> result = new ArrayList<>();
-
-        int i = 0;
-        for (PostingAccrual accrual : accrualsBySupplyId.values()) {
-            System.out.println(i++);
-            int totalItemsQuantity = accrual.getSupply().getComposition().getItems().stream().mapToInt(Item::getQuantity).sum();
-            BigDecimal sum = accrual.getSum();
-            BigDecimal perItem = sum.divide(new BigDecimal(totalItemsQuantity), RoundingMode.FLOOR);
-            for (Item item : accrual.getSupply().getComposition().getItems()) {
-                List<Object> row = List.of(
-                        shopName,
-                        accrual.getSupplyId(),
-                        accrual.getSupply().getClusterName(),
-                        item.getSku(),
-                        item.getArticle(),
-                        item.getQuantity(),
-                        accrual.getSum(),
-                        perItem
-                );
-                result.add(row);
-            }
-        }
-        return result;
     }
 
     private List<List<Object>> getCrossDockColumnHeadingData() {
