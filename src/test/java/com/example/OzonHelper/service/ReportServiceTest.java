@@ -14,6 +14,8 @@ import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
 import com.example.OzonHelper.service.report.crossdock.CrossDockDataBuilder;
+import com.example.OzonHelper.service.report.crossdock.CrossDockSupplyBuilder;
+import com.example.OzonHelper.service.supply.SupplyOrderLoader;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import com.opencsv.exceptions.CsvValidationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +47,8 @@ public class ReportServiceTest {
     private PostingAccrualMapper accrualMapper;
     private SupplyOrderCompositionMapper compositionMapper;
     private CrossDockDataBuilder crossDockDataBuilder;
+    private CrossDockSupplyBuilder crossDockSupplyBuilder;
+    private SupplyOrderLoader supplyOrderLoader;
 
     @BeforeEach
     public void init() {
@@ -61,6 +65,8 @@ public class ReportServiceTest {
         accrualMapper = new PostingAccrualMapper();
         compositionMapper = new SupplyOrderCompositionMapper();
         crossDockDataBuilder = new CrossDockDataBuilder();
+        crossDockSupplyBuilder = new CrossDockSupplyBuilder();
+        supplyOrderLoader = new SupplyOrderLoader();
         this.reportService = new ReportService(
                 clients,
                 properties,
@@ -71,7 +77,9 @@ public class ReportServiceTest {
                 dtoMapper,
                 accrualMapper,
                 compositionMapper,
-                crossDockDataBuilder
+                crossDockDataBuilder,
+                crossDockSupplyBuilder,
+                supplyOrderLoader
         );
     }
 
@@ -80,7 +88,7 @@ public class ReportServiceTest {
 
         OzonClient ozonClient = clients.get("client-1");
 
-        Path fullPath = Path.of("my_path\\reports\\crossdock\\incoming\\report_01.08.2026-13.08.2025.xlsx");
+        Path fullPath = Path.of("my_path\\reports\\crossdock\\incoming\\report_01.08.2026-13.08.2026.xlsx");
 
         List<List<String>> excelList = List.of(
                 List.of("101", "creationDate", "groupOfService", "Кросс-докинг", "article1", "sku1", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-659,81 ₽"),
@@ -92,12 +100,17 @@ public class ReportServiceTest {
 
         when(excelParser.readCSV(any(Path.class))).thenReturn(excelList);
 
-        when(ozonClient.getShopName()).thenReturn("shopName");
+        List<String> completedSupplyOrderIds = List.of("101", "102", "105", "106");
+        List<String> confirmationAwaitingSupplyOrderIds = List.of("103", "104");
 
-        List<String> supplyOrderIds = List.of("101", "102", "103", "104", "105", "106");
+        List<String> supplyOrderIds = new ArrayList<>();
+        supplyOrderIds.addAll(completedSupplyOrderIds);
+        supplyOrderIds.addAll(confirmationAwaitingSupplyOrderIds);
 
-        SupplyOrdersPage page = new SupplyOrdersPage(supplyOrderIds, "1");
-        when(ozonClient.getSupplyOrdersIds(any(), any(SupplyState.class))).thenReturn(page);
+        SupplyOrdersPage page1 = new SupplyOrdersPage(completedSupplyOrderIds, "");
+        SupplyOrdersPage page2 = new SupplyOrdersPage(confirmationAwaitingSupplyOrderIds, "");
+        when(ozonClient.getSupplyOrdersIds(null, SupplyState.COMPLETED)).thenReturn(page1);
+        when(ozonClient.getSupplyOrdersIds(null, SupplyState.REPORTS_CONFIRMATION_AWAITING)).thenReturn(page2);
 
         //create supplies, set supplies
         List<SupplyOrderDto> supplyDtos = new ArrayList<>();
@@ -219,13 +232,9 @@ public class ReportServiceTest {
         // no new sheet creating
         when(googleClient.hasSheet(anyString(), anyString())).thenReturn(1);
 
-        // ignore formatting
-        doNothing().when(googleClient).formatCrossDockSheet(anyString(), anyInt());
-
         when(ozonClient.getShopName()).thenReturn("shop1");
 
         when(googleClient.readTable(anyString(), anyString())).thenReturn(List.of());
-        doNothing().when(googleClient).writeTable(anyList(), anyString(), anyString());
 
         List<List<Object>> rawData = List.of(
                 List.of("shop1", "101", "Москва", "sku1", "article1", 101, new BigDecimal("-659.81"), new BigDecimal("-6.54")),
@@ -242,9 +251,11 @@ public class ReportServiceTest {
 
         verify(googleClient).writeTable(captor.capture(), anyString(), anyString());
 
+        verify(ozonClient, times(1)).getSupplyOrdersIds(null, SupplyState.COMPLETED);
+        verify(ozonClient, times(1)).getSupplyOrdersIds(null, SupplyState.REPORTS_CONFIRMATION_AWAITING);
+
         List<List<Object>> value = captor.getValue();
         assertThat(value).isEqualTo(rawData);
-
     }
 
     private List<ClusterDto> getClusters() {
@@ -402,6 +413,5 @@ public class ReportServiceTest {
 
         return postings;
     }
-
 
 }

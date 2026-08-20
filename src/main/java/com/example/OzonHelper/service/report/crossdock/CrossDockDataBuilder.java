@@ -2,6 +2,7 @@ package com.example.OzonHelper.service.report.crossdock;
 
 import com.example.OzonHelper.domain.Item;
 import com.example.OzonHelper.domain.PostingAccrual;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Component
 public class CrossDockDataBuilder {
 
     public List<List<Object>> buildCrossDockData(String shopName, Map<String, PostingAccrual> accrualsBySupplyId) {

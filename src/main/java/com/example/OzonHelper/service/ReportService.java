@@ -17,6 +17,8 @@ import com.example.OzonHelper.exceptions.ReportCreatingException;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
 import com.example.OzonHelper.service.report.crossdock.CrossDockDataBuilder;
+import com.example.OzonHelper.service.report.crossdock.CrossDockSupplyBuilder;
+import com.example.OzonHelper.service.supply.SupplyOrderLoader;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.opencsv.exceptions.CsvException;
@@ -64,13 +66,15 @@ public class ReportService {
     private final SupplyOrderCompositionMapper compositionMapper;
     private final PostingAccrualMapper postingAccrualMapper;
     private final CrossDockDataBuilder crossDockDataBuilder;
+    private final CrossDockSupplyBuilder crossDockSupplyBuilder;
+    private final SupplyOrderLoader supplyOrderLoader;
     private Map<Long, String> clustersById;
 
     public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties,
                          GoogleClient googleClient, SheetAnalyzer sheetAnalyzer,
                          ReportCSVParser csvParser, ReportExcelParser excelParser,
                          PostingDtoMapper postingDtoMapper, PostingAccrualMapper postingAccrualMapper, SupplyOrderCompositionMapper compositionMapper,
-                         CrossDockDataBuilder crossDockDataBuilder) {
+                         CrossDockDataBuilder crossDockDataBuilder, CrossDockSupplyBuilder crossDockSupplyBuilder, SupplyOrderLoader supplyOrderLoader) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
@@ -81,6 +85,8 @@ public class ReportService {
         this.postingAccrualMapper = postingAccrualMapper;
         this.compositionMapper = compositionMapper;
         this.crossDockDataBuilder = crossDockDataBuilder;
+        this.crossDockSupplyBuilder = crossDockSupplyBuilder;
+        this.supplyOrderLoader = supplyOrderLoader;
     }
 
     public void processCrossdockReport(String clientId, Path fullPath) throws CsvValidationException, IOException, InterruptedException {
@@ -102,13 +108,20 @@ public class ReportService {
         Map<String, PostingAccrual> accrualsBySupplyId = aggregateAccrualsBySupplyId(crossDockAccruals);
         if (accrualsBySupplyId.isEmpty()) return;
 
-        List<String> supplyOrderIds = getAllSupplyOrderIds(client);
-        List<SupplyOrderDto> supplyOrderDtos = getSupplyOrderDtos(client, supplyOrderIds);
+        List<String> completedSupplyOrderIds = supplyOrderLoader.getAllSupplyOrderIds(client, SupplyState.COMPLETED);
+        List<String> confirmationAwaitingSupplyOrderIds = supplyOrderLoader.getAllSupplyOrderIds(client, SupplyState.REPORTS_CONFIRMATION_AWAITING);
+
+        List<String> supplyOrderIds = new ArrayList<>();
+        supplyOrderIds.addAll(completedSupplyOrderIds);
+        supplyOrderIds.addAll(confirmationAwaitingSupplyOrderIds);
+
+        List<SupplyOrderDto> supplyOrderDtos = supplyOrderLoader.getSupplyOrderDtos(client, supplyOrderIds);
 
         if (clustersById == null) {
             clustersById = loadClusterNamesById(client);
         }
-        Map<String, Supply> byBundleId = buildSuppliesByBundleId(accrualsBySupplyId, supplyOrderDtos, clustersById);
+
+        Map<String, Supply> byBundleId = crossDockSupplyBuilder.buildSuppliesByBundleId(accrualsBySupplyId, supplyOrderDtos, clustersById);
 
         loadSupplyCompositions(byBundleId, client);
 
@@ -193,38 +206,6 @@ public class ReportService {
 
                 return postingAccrual;
             });
-        }
-        return result;
-    }
-
-    // TODO: get also supplies with REPORTS_CONFIRMATION_AWAITING status because
-    // accrual appears with this status, so
-    // if there are can be incorrect reports when
-    // there are no supply because - supply is still in status await-confirmation, and we get only with completed status
-    // but the accrual for this supply is already in excel report
-    private List<String> getAllSupplyOrderIds(OzonClient client) throws IOException, InterruptedException {
-        List<String> result = new ArrayList<>();
-        SupplyOrdersPage page;
-        String lastId = null;
-        do {
-            page = client.getSupplyOrdersIds(lastId, SupplyState.COMPLETED);
-            result.addAll(page.orderIds());
-            lastId = page.nextCursor();
-            System.out.println("page.orderIds().size() = " + page.orderIds().size());
-            System.out.println("lastId = " + lastId);
-            Thread.sleep(1000);
-        } while (page.orderIds().size() >= 100 && !lastId.isBlank());
-
-        return result;
-    }
-
-    private List<SupplyOrderDto> getSupplyOrderDtos(OzonClient client, List<String> supplyOrderIds) throws IOException, InterruptedException {
-        int orderIdsMaxLimit = 50;
-        List<SupplyOrderDto> result = new ArrayList<>();
-        for (int i = 0; i < supplyOrderIds.size(); i += orderIdsMaxLimit) {
-            int to = Math.min(i + orderIdsMaxLimit, supplyOrderIds.size());
-            result.addAll(client.getSupplyOrders(supplyOrderIds.subList(i, to)));
-            Thread.sleep(1000);
         }
         return result;
     }
@@ -382,9 +363,7 @@ public class ReportService {
 
         System.out.println("Итоговый список для записи: " + resultList.size());
 
-        resultList.forEach(System.out::println);
-
-//        writeDailyReport(resultList);
+        writeDailyReport(resultList);
 
         if (weekly) writeWeeklyReport(resultList);
     }
