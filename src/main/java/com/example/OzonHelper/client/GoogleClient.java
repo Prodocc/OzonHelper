@@ -52,6 +52,25 @@ public class GoogleClient {
                 batchUpdateRequest).execute();
     }
 
+    public void insertColumns(String spreadSheetId, int sheetId, int startIndex, int endIndex) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+        Request request = new Request();
+        InsertDimensionRequest dimensionRequest = new InsertDimensionRequest();
+        DimensionRange range = new DimensionRange();
+        range.setSheetId(sheetId);
+        range.setDimension("COLUMNS");
+        range.setStartIndex(startIndex);
+        range.setEndIndex(endIndex);
+
+        dimensionRequest.setRange(range);
+        dimensionRequest.setInheritFromBefore(true);
+
+        request.setInsertDimension(dimensionRequest);
+        batchUpdateRequest.setRequests(Collections.singletonList(request));
+        sheetsService.spreadsheets().batchUpdate(spreadSheetId,
+                batchUpdateRequest).execute();
+    }
+
     public void setBackgroundColor(String spreadSheetId, int sheetId, GridRange gridRange, Color color) throws IOException {
         BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
         Request request = new Request();
@@ -322,6 +341,56 @@ public class GoogleClient {
         sheetsService.spreadsheets()
                 .batchUpdate(spreadSheetId, batchUpdateRequest)
                 .execute();
+    }
+
+    public void mergeHeaderCells(String spreadSheetId, int sheetId, int startColIndex, int endColIndex) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+        MergeCellsRequest mergeRequest = new MergeCellsRequest();
+
+        GridRange range = new GridRange();
+        range.setSheetId(sheetId);
+        range.setStartColumnIndex(startColIndex);
+        range.setEndColumnIndex(endColIndex);
+        range.setStartRowIndex(0);
+        range.setEndRowIndex(1);
+
+        mergeRequest.setRange(range);
+        mergeRequest.setMergeType("MERGE_ALL");
+
+        Request request = new Request()
+                .setMergeCells(mergeRequest);
+
+        batchUpdateRequest.setRequests(List.of(request));
+
+        sheetsService.spreadsheets().batchUpdate(spreadSheetId,
+                batchUpdateRequest).execute();
+    }
+
+    public void copyColumnFormat(String spreadSheetId, int sheetId, int startColIndex, int endColIndex) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+        GridRange source = new GridRange()
+                .setSheetId(sheetId)
+                .setStartColumnIndex(startColIndex - 3)
+                .setEndColumnIndex(startColIndex);
+
+        GridRange destination = new GridRange()
+                .setSheetId(sheetId)
+                .setStartColumnIndex(startColIndex)
+                .setEndColumnIndex(endColIndex);
+
+        CopyPasteRequest copyPasteRequest = new CopyPasteRequest()
+                .setSource(source)
+                .setDestination(destination)
+                .setPasteType("PASTE_FORMAT")
+                .setPasteOrientation("NORMAL");
+
+        Request request = new Request()
+                .setCopyPaste(copyPasteRequest);
+
+        batchUpdateRequest.setRequests(List.of(request));
+
+        sheetsService.spreadsheets().batchUpdate(spreadSheetId,
+                batchUpdateRequest).execute();
     }
 
     private record SheetColumnRange(String sheetName, String startColLetter, String endColLetter) {

@@ -2,17 +2,17 @@ package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.domain.PostingAccrual;
-import com.example.OzonHelper.domain.SupplyOrder;
 import com.example.OzonHelper.domain.SupplyOrderComposition;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
+import com.example.OzonHelper.dto.response.fbo.ClusterDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderCompositionDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
-import com.example.OzonHelper.dto.response.fbo.SupplyOrderInfoDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrdersPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
 import com.example.OzonHelper.enums.AccrualType;
+import com.example.OzonHelper.enums.ClusterType;
 import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
@@ -47,11 +47,11 @@ public class OzonHelperApplication {
 //        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
 //        OzonClient client = ozonClients.get("1140235");
 
-        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
-        crossdockReportWatcher.watch();
+//        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
+//        crossdockReportWatcher.watch();
 
-//        ReportService reportService = run.getBean("reportService", ReportService.class);
-//        reportService.updateDailyReport(false);
+        ReportService reportService = run.getBean("reportService", ReportService.class);
+        reportService.updateDailyReport(false);
 //        reportService.processCrossdockReport("123", Path.of("1"));
 
         System.exit(0);

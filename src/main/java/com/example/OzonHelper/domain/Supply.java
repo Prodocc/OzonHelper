@@ -7,13 +7,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class SupplyOrder {
+public class Supply {
     private LocalDateTime createdDate;
     private long orderId;
     private String orderNumber;
     private String supplyId;
     private SupplyOrderComposition composition;
     private SupplyState state;
-    private String bundle_id;
+    private String bundleId;
     private String clusterName;
 }

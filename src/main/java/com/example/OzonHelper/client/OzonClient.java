@@ -129,6 +129,8 @@ public class OzonClient implements MarketplaceClient {
                 OzonApiEndpoint.SUPPLY_ORDER_LIST.getFullUrl(apiHost),
                 request);
 
+        System.out.println(response.body());
+
         GetSupplyOrdersResponse getSupplyOrdersResponse = mapper.readValue(response.body(), GetSupplyOrdersResponse.class);
         return new SupplyOrdersPage(getSupplyOrdersResponse.getSupplyOrderIds(), getSupplyOrdersResponse.getLastId());
     }
@@ -181,9 +183,9 @@ public class OzonClient implements MarketplaceClient {
         return getFbsPostingList(since, to, status).size() > 1;
     }
 
-    public List<ClusterDto> getClusters() throws IOException, InterruptedException {
+    public List<ClusterDto> getClusters(ClusterType type) throws IOException, InterruptedException {
         GetClustersRequest request = new GetClustersRequest();
-        request.setClusterType(ClusterType.CLUSTER_TYPE_OZON.toString());
+        request.setClusterType(type.toString());
 
         HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.SUPPLY_CLUSTERS_LIST.getFullUrl(apiHost),

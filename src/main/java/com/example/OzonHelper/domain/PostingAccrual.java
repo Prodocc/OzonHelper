@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 @Data
 public class PostingAccrual {
-    private SupplyOrder supplyOrder;
+    private Supply supply;
     private String supplyId;
     private LocalDate accrualDate;
     private AccrualType type;

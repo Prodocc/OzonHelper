@@ -6,21 +6,33 @@ import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.StockItem;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
+import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
-import com.example.OzonHelper.dto.response.fbo.StockDto;
+import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.enums.ClusterType;
+import com.example.OzonHelper.enums.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
+import com.example.OzonHelper.service.report.crossdock.CrossDockDataBuilder;
+import com.example.OzonHelper.service.report.crossdock.CrossDockSupplyBuilder;
+import com.example.OzonHelper.service.supply.SupplyOrderLoader;
 import com.example.OzonHelper.util.SheetAnalyzer;
+import com.opencsv.exceptions.CsvValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
+import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.mockito.Mockito.*;
 
 public class ReportServiceTest {
@@ -33,6 +45,10 @@ public class ReportServiceTest {
     private ReportExcelParser excelParser;
     private PostingDtoMapper dtoMapper;
     private PostingAccrualMapper accrualMapper;
+    private SupplyOrderCompositionMapper compositionMapper;
+    private CrossDockDataBuilder crossDockDataBuilder;
+    private CrossDockSupplyBuilder crossDockSupplyBuilder;
+    private SupplyOrderLoader supplyOrderLoader;
 
     @BeforeEach
     public void init() {
@@ -47,6 +63,10 @@ public class ReportServiceTest {
         excelParser = mock(ReportExcelParser.class);
         dtoMapper = new PostingDtoMapper();
         accrualMapper = new PostingAccrualMapper();
+        compositionMapper = new SupplyOrderCompositionMapper();
+        crossDockDataBuilder = new CrossDockDataBuilder();
+        crossDockSupplyBuilder = new CrossDockSupplyBuilder();
+        supplyOrderLoader = new SupplyOrderLoader();
         this.reportService = new ReportService(
                 clients,
                 properties,
@@ -55,7 +75,199 @@ public class ReportServiceTest {
                 csvParser,
                 excelParser,
                 dtoMapper,
-                accrualMapper);
+                accrualMapper,
+                compositionMapper,
+                crossDockDataBuilder,
+                crossDockSupplyBuilder,
+                supplyOrderLoader
+        );
+    }
+
+    @Test
+    public void processCrossdockReport() throws CsvValidationException, IOException, InterruptedException {
+
+        OzonClient ozonClient = clients.get("client-1");
+
+        Path fullPath = Path.of("my_path\\reports\\crossdock\\incoming\\report_01.08.2026-13.08.2026.xlsx");
+
+        List<List<String>> excelList = List.of(
+                List.of("101", "creationDate", "groupOfService", "Кросс-докинг", "article1", "sku1", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-659,81 ₽"),
+                List.of("102", "creationDate", "groupOfService", "Кросс-докинг", "article2", "sku2", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-812,00 ₽"),
+                List.of("103", "creationDate", "groupOfService", "Кросс-докинг", "article3", "sku3", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "0,00 ₽"),
+                List.of("103", "creationDate", "groupOfService", "Эквайринг", "article3", "sku3", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "0,00 ₽"),
+                List.of("104", "creationDate", "groupOfService", "Кросс-докинг", "article4", "sku4", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-400,00 ₽"),
+                List.of("104", "creationDate", "groupOfService", "Кросс-докинг", "article5", "sku5", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-400,00 ₽"));
+
+        when(excelParser.readCSV(any(Path.class))).thenReturn(excelList);
+
+        List<String> completedSupplyOrderIds = List.of("101", "102", "105", "106");
+        List<String> confirmationAwaitingSupplyOrderIds = List.of("103", "104");
+
+        List<String> supplyOrderIds = new ArrayList<>();
+        supplyOrderIds.addAll(completedSupplyOrderIds);
+        supplyOrderIds.addAll(confirmationAwaitingSupplyOrderIds);
+
+        SupplyOrdersPage page1 = new SupplyOrdersPage(completedSupplyOrderIds, "");
+        SupplyOrdersPage page2 = new SupplyOrdersPage(confirmationAwaitingSupplyOrderIds, "");
+        when(ozonClient.getSupplyOrdersIds(null, SupplyState.COMPLETED)).thenReturn(page1);
+        when(ozonClient.getSupplyOrdersIds(null, SupplyState.REPORTS_CONFIRMATION_AWAITING)).thenReturn(page2);
+
+        //create supplies, set supplies
+        List<SupplyOrderDto> supplyDtos = new ArrayList<>();
+
+        // first supplyOrder
+        SupplyOrderDto dto1 = new SupplyOrderDto();
+        dto1.setCreationDate(LocalDateTime.now());
+        dto1.setOrderNumber("101");
+
+        List<SupplyInfoDto> supplies1 = new ArrayList<>();
+        SupplyInfoDto supplyInfoDto1 = new SupplyInfoDto();
+        supplyInfoDto1.setSupplyId("101");
+        supplyInfoDto1.setBundleId("101");
+        supplyInfoDto1.setClusterId(0);
+
+        SupplyInfoDto supplyInfoDto2 = new SupplyInfoDto();
+        supplyInfoDto2.setSupplyId("102");
+        supplyInfoDto2.setBundleId("102");
+        supplyInfoDto2.setClusterId(1);
+
+        supplies1.add(supplyInfoDto1);
+        supplies1.add(supplyInfoDto2);
+
+        dto1.setSupplies(supplies1);
+
+        // second
+        SupplyOrderDto dto2 = new SupplyOrderDto();
+        dto2.setCreationDate(LocalDateTime.now());
+        dto2.setOrderNumber("102");
+
+        List<SupplyInfoDto> supplies2 = new ArrayList<>();
+        SupplyInfoDto supplyInfoDto3 = new SupplyInfoDto();
+        supplyInfoDto3.setSupplyId("103");
+        supplyInfoDto3.setBundleId("103");
+        supplyInfoDto3.setClusterId(2);
+
+        supplies2.add(supplyInfoDto3);
+
+        dto2.setSupplies(supplies2);
+
+        //third
+        SupplyOrderDto dto3 = new SupplyOrderDto();
+        dto3.setCreationDate(LocalDateTime.now());
+        dto3.setOrderNumber("104");
+
+        List<SupplyInfoDto> supplies3 = new ArrayList<>();
+        SupplyInfoDto supplyInfoDto4 = new SupplyInfoDto();
+        supplyInfoDto4.setSupplyId("104");
+        supplyInfoDto4.setBundleId("104");
+        supplyInfoDto4.setClusterId(3);
+
+        supplies3.add(supplyInfoDto4);
+
+        dto3.setSupplies(supplies3);
+
+        supplyDtos.add(dto1);
+        supplyDtos.add(dto2);
+        supplyDtos.add(dto3);
+
+        when(ozonClient.getSupplyOrders(supplyOrderIds)).thenReturn(supplyDtos);
+
+        List<ClusterDto> clusters = getClusters();
+        when(ozonClient.getClusters(any(ClusterType.class))).thenReturn(clusters);
+
+        //create orderCompositionDtos
+        List<ItemDto> items1 = new ArrayList<>();
+        ItemDto item1 = new ItemDto();
+        item1.setSku("sku1");
+        item1.setArticle("article1");
+        item1.setQuantity(101);
+
+        items1.add(item1);
+
+        SupplyOrderCompositionDto composition1 = new SupplyOrderCompositionDto(items1, 1);
+
+        List<ItemDto> items2 = new ArrayList<>();
+        ItemDto item2 = new ItemDto();
+        item2.setSku("sku2");
+        item2.setArticle("article2");
+        item2.setQuantity(102);
+
+        items2.add(item2);
+
+        SupplyOrderCompositionDto composition2 = new SupplyOrderCompositionDto(items2, 1);
+
+        List<ItemDto> items3 = new ArrayList<>();
+        ItemDto item3 = new ItemDto();
+        item3.setSku("sku3");
+        item3.setArticle("article3");
+        item3.setQuantity(103);
+
+        items3.add(item3);
+
+        SupplyOrderCompositionDto composition3 = new SupplyOrderCompositionDto(items3, 1);
+
+        List<ItemDto> items4 = new ArrayList<>();
+        ItemDto item4 = new ItemDto();
+        item4.setSku("sku4");
+        item4.setArticle("article4");
+        item4.setQuantity(104);
+
+        ItemDto item5 = new ItemDto();
+        item5.setSku("sku5");
+        item5.setArticle("article5");
+        item5.setQuantity(105);
+
+        items4.add(item4);
+        items4.add(item5);
+
+        SupplyOrderCompositionDto composition4 = new SupplyOrderCompositionDto(items4, 2);
+
+        when(ozonClient.getSupplyOrdersComposition(List.of(supplyInfoDto1.getBundleId()))).thenReturn(composition1);
+        when(ozonClient.getSupplyOrdersComposition(List.of(supplyInfoDto2.getBundleId()))).thenReturn(composition2);
+        when(ozonClient.getSupplyOrdersComposition(List.of(supplyInfoDto3.getBundleId()))).thenReturn(composition3);
+        when(ozonClient.getSupplyOrdersComposition(List.of(supplyInfoDto4.getBundleId()))).thenReturn(composition4);
+
+        when(properties.getSheets()).thenReturn(Map.of("crossdock-report-table", "spreeadSheetId-1"));
+
+        // no new sheet creating
+        when(googleClient.hasSheet(anyString(), anyString())).thenReturn(1);
+
+        when(ozonClient.getShopName()).thenReturn("shop1");
+
+        when(googleClient.readTable(anyString(), anyString())).thenReturn(List.of());
+
+        List<List<Object>> rawData = List.of(
+                List.of("shop1", "101", "Москва", "sku1", "article1", 101, new BigDecimal("-659.81"), new BigDecimal("-6.54")),
+                List.of("shop1", "102", "СПБ", "sku2", "article2", 102, new BigDecimal("-812.00"), new BigDecimal("-7.97")),
+                List.of("shop1", "103", "Ростов", "sku3", "article3", 103, new BigDecimal("0.00"), new BigDecimal("0.00")),
+                List.of("shop1", "104", "Новосибирск", "sku4", "article4", 104, new BigDecimal("-800.00"), new BigDecimal("-3.83")),
+                List.of("shop1", "104", "Новосибирск", "sku5", "article5", 105, new BigDecimal("-800.00"), new BigDecimal("-3.83"))
+        );
+
+        ArgumentCaptor<List<List<Object>>> captor = ArgumentCaptor.forClass(List.class);
+
+        // execute
+        reportService.processCrossdockReport("client-1", fullPath);
+
+        verify(googleClient).writeTable(captor.capture(), anyString(), anyString());
+
+        verify(ozonClient, times(1)).getSupplyOrdersIds(null, SupplyState.COMPLETED);
+        verify(ozonClient, times(1)).getSupplyOrdersIds(null, SupplyState.REPORTS_CONFIRMATION_AWAITING);
+
+        List<List<Object>> value = captor.getValue();
+        assertThat(value).isEqualTo(rawData);
+    }
+
+    private List<ClusterDto> getClusters() {
+        String[] clusterNames = new String[]{"Москва", "СПБ", "Ростов", "Новосибирск"};
+        List<ClusterDto> result = new ArrayList<>();
+        for (int i = 0; i < clusterNames.length; i++) {
+            ClusterDto dto = new ClusterDto();
+            dto.setMacrolocalClusterId(i);
+            dto.setName(clusterNames[i]);
+            result.add(dto);
+        }
+        return result;
     }
 
     @Test
@@ -201,6 +413,5 @@ public class ReportServiceTest {
 
         return postings;
     }
-
 
 }
