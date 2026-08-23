@@ -12,7 +12,9 @@ public class Question {
     private String author;
     private LocalDateTime publishedAt;
     private long sku;
+    private String article;
     private QuestionStatus status;
     private String text;
     private List<Answer> answers;
+    private int answerCount;
 }

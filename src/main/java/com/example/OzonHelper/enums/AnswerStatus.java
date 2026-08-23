@@ -7,7 +7,8 @@ public enum AnswerStatus {
     PUBLISHED("PUBLISHED","Опубликован"),
     AWAITING_MODERATION("AWAITING_MODERATION","Ожидает модерации"),
     MODERATION_FAILED("MODERATION_FAILED","Модерация не пройдена"),
-    DUPLICATE("DUPLICATE","Дубликат");
+    DUPLICATE("DUPLICATE","Дубликат"),
+    DELETED("DELETED","Удалён");
 
     @Getter(onMethod_ = @JsonValue)
     private final String apiValue;

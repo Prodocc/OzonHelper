@@ -12,4 +12,5 @@ public class Answer {
     private LocalDateTime publishedAt;
     private long sku;
     private AnswerStatus status;
+    private String text;
 }
