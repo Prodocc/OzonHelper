@@ -16,7 +16,6 @@ import com.example.OzonHelper.enums.QuestionStatus;
 import com.example.OzonHelper.enums.SubscriptionType;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import com.example.OzonHelper.util.SimpleRateLimiter;
-import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.springframework.stereotype.Service;
 
@@ -32,10 +31,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -171,6 +166,7 @@ public class QuestionService {
         googleClient.writeTable(newRows, spreadSheetId, range);
     }
 
+    // same method with buildCrossDockRange
     private String buildQuestionsRange(String title, int startRow, int dataSize) {
         int endRow = startRow + dataSize - 1;
         return "'" + title + "'" + "!A" + startRow + ":H" + endRow;

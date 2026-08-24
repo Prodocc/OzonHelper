@@ -644,12 +644,8 @@ public class ReportService {
         int startColIndex = 3 + firstRow.size() * 3;
         int endColIndex = startColIndex + 3;
 
-        System.out.println("startColIndex = " + startColIndex);
-        System.out.println("endColIndex = " + endColIndex);
-
         List<Sheet> sheets = googleClient.getSheets(spreadSheetId);
         Integer columnCount = sheets.get(WEEKLY_REPORT_SHEET_INDEX).getProperties().getGridProperties().getColumnCount();
-        System.out.println("columnCount = " + columnCount);
 
         if (startColIndex >= columnCount - 3) {
             prepareWeeklyReportColumns(spreadSheetId, startColIndex, endColIndex);
