@@ -1,7 +1,8 @@
 package com.example.OzonHelper.enums;
 
 public enum OzonApiEndpoint {
-
+    PRODUCT_LIST("/v3/product/info/list"),
+    SELLER_INFO("/v1/seller/info"),
     SUPPLY_ORDER_LIST("/v3/supply-order/list"),
     SUPPLY_ORDER_INFO("/v3/supply-order/get"),
     SUPPLY_ORDER_COMPOSITION("/v1/supply-order/bundle"),
@@ -17,7 +18,9 @@ public enum OzonApiEndpoint {
     POSTINGS_REPORT_INFO("/v1/report/info"),
     CHATS_LIST("/v3/chat/list"),
     CHAT_HISTORY("/v3/chat/history"),
-    ACCRUAL_TYPES("/v1/finance/accrual/types");
+    ACCRUAL_TYPES("/v1/finance/accrual/types"),
+    QUESTION_LIST("/v1/question/list"),
+    ANSWER_LIST("/v1/question/answer/list");
 
     private final String path;
 

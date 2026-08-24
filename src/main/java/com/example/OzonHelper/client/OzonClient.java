@@ -6,14 +6,20 @@ import com.example.OzonHelper.domain.Warehouse;
 import com.example.OzonHelper.dto.request.PostingsReportCreateFilter;
 import com.example.OzonHelper.dto.request.PostingsReportCreateRequest;
 import com.example.OzonHelper.dto.request.PostingsReportInfoRequest;
+import com.example.OzonHelper.dto.request.answers.GetAnswersRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatHistoryRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
+import com.example.OzonHelper.dto.request.product.GetProductRequest;
+import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
+import com.example.OzonHelper.dto.request.questions.GetQuestionsRequest;
 import com.example.OzonHelper.dto.response.PostingsReportCreateResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
+import com.example.OzonHelper.dto.response.answers.AnswerDto;
+import com.example.OzonHelper.dto.response.answers.GetAnswersResponse;
 import com.example.OzonHelper.dto.response.chat.ChatDto;
 import com.example.OzonHelper.dto.response.chat.GetChatHistoryResponse;
 import com.example.OzonHelper.dto.response.chat.GetChatListResponse;
@@ -23,8 +29,15 @@ import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.dto.response.product.GetProductResponse;
+import com.example.OzonHelper.dto.response.product.ProductDto;
+import com.example.OzonHelper.dto.response.questions.GetQuestionsResponse;
+import com.example.OzonHelper.dto.response.questions.QuestionDto;
+import com.example.OzonHelper.dto.response.questions.QuestionPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
 import com.example.OzonHelper.dto.response.report.GetAccrualTypeResponse;
+import com.example.OzonHelper.dto.response.seller.GetSellerInfoResponse;
+import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
 import com.example.OzonHelper.enums.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,9 +81,16 @@ public class OzonClient implements MarketplaceClient {
         this.shopName = config.getName();
     }
 
-    @Override
-    public List<OzonPostingRow> getPostings(LocalDate dateFrom, LocalDate dateTo, String[] skus, String... delivery_schema) throws IOException, InterruptedException {
-        return List.of();
+    public List<ProductDto> getProducts(List<Long> skus) throws IOException, InterruptedException {
+        GetProductRequest request = new GetProductRequest();
+        request.setSkus(skus);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.PRODUCT_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetProductResponse.class).getProducts();
     }
 
     @Override
@@ -80,7 +100,6 @@ public class OzonClient implements MarketplaceClient {
 
     private HttpResponse<String> createJsonBodyAndSendRequest(String url, Object JsonRequestBodyObject) throws IOException, InterruptedException {
         String requestJsonBody = mapper.writeValueAsString(JsonRequestBodyObject);
-
         return sendRequest(url, requestJsonBody);
     }
 
@@ -369,6 +388,53 @@ public class OzonClient implements MarketplaceClient {
         );
 
         return mapper.readValue(response.body(), GetAccrualTypeResponse.class).getAccruals();
+    }
+
+    public QuestionPage getQuestions(String from, String to, String lastId, QuestionStatus status) throws IOException, InterruptedException {
+        GetQuestionsRequest request = new GetQuestionsRequest();
+        GetQuestionsFilter filter = new GetQuestionsFilter();
+
+        filter.setDateFrom(from);
+        filter.setDateTo(to);
+        filter.setStatus(status);
+
+        request.setFilter(filter);
+        request.setLimit(100);
+        request.setSortDir("ASC");
+        request.setLastId(lastId);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.QUESTION_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        GetQuestionsResponse getQuestionsResponse = mapper.readValue(response.body(), GetQuestionsResponse.class);
+        return new QuestionPage(getQuestionsResponse.getQuestions(), getQuestionsResponse.getLastId(), getQuestionsResponse.isHasNext());
+    }
+
+
+    public List<AnswerDto> getAnswers(String questionId, Long sku, String lastId) throws IOException, InterruptedException {
+        GetAnswersRequest request = new GetAnswersRequest();
+
+        request.setQuestionId(questionId);
+        request.setSku(sku);
+        request.setLastId(lastId);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.ANSWER_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetAnswersResponse.class).getAnswers();
+    }
+
+    public SubscriptionDto getSubscriptionInfo() throws IOException, InterruptedException {
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SELLER_INFO.getFullUrl(apiHost),
+                HttpRequest.BodyPublishers.noBody()
+        );
+
+        return mapper.readValue(response.body(), GetSellerInfoResponse.class).getSubscription();
     }
 
 

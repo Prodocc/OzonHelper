@@ -196,7 +196,7 @@ public class GoogleClient {
         return skuToRow;
     }
 
-    private void writeDataRanges(String spreadsheetId, List<ValueRange> dataRanges) throws IOException {
+    public void writeDataRanges(String spreadsheetId, List<ValueRange> dataRanges) throws IOException {
         BatchUpdateValuesRequest batchDataRequest = new BatchUpdateValuesRequest()
                 .setValueInputOption("RAW")
                 .setData(dataRanges);
@@ -224,6 +224,21 @@ public class GoogleClient {
         }
 
         return buildSkuToRowMap(skuValues);
+    }
+
+    public List<ValueRange> buildQuestionsDataRanges(String title, Map<Integer, List<Object>> rowsToUpdate) {
+
+        List<ValueRange> dataRanges = new ArrayList<>();
+        for (Integer rowNumber : rowsToUpdate.keySet()) {
+            String range = title + "!A" + rowNumber + ":G" + rowNumber;
+
+            ValueRange valueRange = new ValueRange()
+                    .setRange(range)
+                    .setValues(Collections.singletonList(rowsToUpdate.get(rowNumber)));
+
+            dataRanges.add(valueRange);
+        }
+        return dataRanges;
     }
 
     private List<ValueRange> buildDataRanges(List<StockItem> items, Map<String, Integer> skuToRowMap,
@@ -284,6 +299,106 @@ public class GoogleClient {
                 .execute();
 
         return execute.getReplies().get(0).getAddSheet().getProperties().getSheetId();
+    }
+
+    public void formatQuestionsSheet(String spreadSheetId, int sheetId) throws IOException {
+        BatchUpdateSpreadsheetRequest batchUpdateRequest = new BatchUpdateSpreadsheetRequest();
+
+        RepeatCellRequest repeatCellRequest = new RepeatCellRequest().setFields(
+                "userEnteredFormat.textFormat.fontFamily," +
+                        "userEnteredFormat.textFormat.fontSize," +
+                        "userEnteredFormat.textFormat.bold"
+        );
+        GridRange gridRange = new GridRange();
+        CellData cellData = new CellData();
+        CellFormat cellFormat = new CellFormat();
+        TextFormat textFormat = new TextFormat()
+                .setFontFamily("Arial")
+                .setFontSize(12)
+                .setBold(true);
+
+        cellFormat.setTextFormat(textFormat);
+        cellData.setUserEnteredFormat(cellFormat);
+
+        gridRange.setSheetId(sheetId);
+        gridRange.setStartColumnIndex(0);
+        gridRange.setEndColumnIndex(8);
+        gridRange.setStartRowIndex(0);
+        gridRange.setEndRowIndex(1);
+
+        repeatCellRequest.setCell(cellData);
+        repeatCellRequest.setRange(gridRange);
+
+        Request repeatRequest = new Request();
+        repeatRequest.setRepeatCell(repeatCellRequest);
+
+        RepeatCellRequest questionRepeatCellRequest = new RepeatCellRequest().setFields(
+                "userEnteredFormat.wrapStrategy"
+        );
+
+        GridRange questionGridRange = new GridRange();
+        CellData questionCellData = new CellData();
+        CellFormat questionCellFormat = new CellFormat()
+                .setWrapStrategy("WRAP");
+
+        questionCellData.setUserEnteredFormat(questionCellFormat);
+        questionGridRange.setSheetId(sheetId);
+        questionGridRange.setStartColumnIndex(4);
+        questionGridRange.setEndColumnIndex(5);
+        questionGridRange.setStartRowIndex(1);
+
+        questionRepeatCellRequest.setCell(questionCellData);
+        questionRepeatCellRequest.setRange(questionGridRange);
+
+        Request questionRequest = new Request();
+        questionRequest.setRepeatCell(questionRepeatCellRequest);
+
+        RepeatCellRequest answerRepeatCellRequest = new RepeatCellRequest().setFields(
+                "userEnteredFormat.wrapStrategy"
+        );
+
+        GridRange answerGridRange = new GridRange();
+        CellData answerCellData = new CellData();
+        CellFormat answerCellFormat = new CellFormat()
+                .setWrapStrategy("WRAP");
+
+        answerCellData.setUserEnteredFormat(answerCellFormat);
+        answerGridRange.setSheetId(sheetId);
+        answerGridRange.setStartColumnIndex(7);
+        answerGridRange.setEndColumnIndex(8);
+        answerGridRange.setStartColumnIndex(1);
+
+        answerRepeatCellRequest.setCell(answerCellData);
+        answerRepeatCellRequest.setRange(answerGridRange);
+
+        Request answerRequest = new Request();
+        answerRequest.setRepeatCell(answerRepeatCellRequest);
+
+        UpdateDimensionPropertiesRequest dimensionPropertiesRequest = new UpdateDimensionPropertiesRequest();
+        DimensionProperties dimensionProperties = new DimensionProperties();
+
+        DimensionRange dimensionRange = new DimensionRange();
+        dimensionRange.setSheetId(sheetId);
+        dimensionRange.setDimension("COLUMNS");
+        dimensionRange.setStartIndex(0);
+        dimensionRange.setEndIndex(8);
+
+        dimensionProperties.setPixelSize(200);
+
+        dimensionPropertiesRequest.setRange(dimensionRange);
+        dimensionPropertiesRequest.setProperties(dimensionProperties);
+        dimensionPropertiesRequest.setFields("pixelSize");
+
+        Request dimensionRequest = new Request();
+        dimensionRequest.setUpdateDimensionProperties(dimensionPropertiesRequest);
+
+
+        batchUpdateRequest.setRequests(List.of(repeatRequest, dimensionRequest,
+                questionRequest, answerRequest));
+
+        sheetsService.spreadsheets()
+                .batchUpdate(spreadSheetId, batchUpdateRequest)
+                .execute();
     }
 
     public void formatCrossDockSheet(String spreadSheetId, int sheetId) throws IOException {
