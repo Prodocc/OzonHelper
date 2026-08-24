@@ -2,6 +2,7 @@ package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.dto.response.product.ProductDto;
+import com.example.OzonHelper.service.CrossdockReportWatcher;
 import com.example.OzonHelper.service.ReportService;
 import com.example.OzonHelper.service.questions.QuestionService;
 import org.springframework.boot.SpringApplication;
@@ -35,11 +36,11 @@ public class OzonHelperApplication {
 //        QuestionService questionService = run.getBean("questionService", QuestionService.class);
 //        questionService.syncQuestions();
 
-//        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
-//        crossdockReportWatcher.watch();
+        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
+        crossdockReportWatcher.watch();
 
-        ReportService reportService = run.getBean("reportService", ReportService.class);
-        reportService.updateDailyReport(true);
+//        ReportService reportService = run.getBean("reportService", ReportService.class);
+//        reportService.updateDailyReport(true);
 //        reportService.processCrossdockReport("123", Path.of("1"));
 
         System.exit(0);

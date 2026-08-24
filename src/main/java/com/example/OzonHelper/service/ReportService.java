@@ -108,11 +108,14 @@ public class ReportService {
         Map<String, PostingAccrual> accrualsBySupplyId = aggregateAccrualsBySupplyId(crossDockAccruals);
         if (accrualsBySupplyId.isEmpty()) return;
 
+        //TODO think which statuses also can be
         List<String> completedSupplyOrderIds = supplyOrderLoader.getAllSupplyOrderIds(client, SupplyState.COMPLETED);
+        List<String> acceptedAtStorageWarehouseSupplyOrderIds = supplyOrderLoader.getAllSupplyOrderIds(client, SupplyState.ACCEPTANCE_AT_STORAGE_WAREHOUSE);
         List<String> confirmationAwaitingSupplyOrderIds = supplyOrderLoader.getAllSupplyOrderIds(client, SupplyState.REPORTS_CONFIRMATION_AWAITING);
 
         List<String> supplyOrderIds = new ArrayList<>();
         supplyOrderIds.addAll(completedSupplyOrderIds);
+        supplyOrderIds.addAll(acceptedAtStorageWarehouseSupplyOrderIds);
         supplyOrderIds.addAll(confirmationAwaitingSupplyOrderIds);
 
         List<SupplyOrderDto> supplyOrderDtos = supplyOrderLoader.getSupplyOrderDtos(client, supplyOrderIds);
