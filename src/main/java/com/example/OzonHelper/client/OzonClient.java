@@ -12,6 +12,8 @@ import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
+import com.example.OzonHelper.dto.request.finance.FinancialReportPeriodDto;
+import com.example.OzonHelper.dto.request.finance.GetFinancialReportRequest;
 import com.example.OzonHelper.dto.request.product.GetProductRequest;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsRequest;
@@ -29,6 +31,8 @@ import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.csv.OzonPostingRow;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.dto.response.finance.FinancialReportDto;
+import com.example.OzonHelper.dto.response.finance.GetFinancialReportResponse;
 import com.example.OzonHelper.dto.response.product.GetProductResponse;
 import com.example.OzonHelper.dto.response.product.ProductDto;
 import com.example.OzonHelper.dto.response.questions.GetQuestionsResponse;
@@ -41,6 +45,7 @@ import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
 import com.example.OzonHelper.enums.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.services.sheets.v4.model.Request;
 import lombok.Data;
 
 import java.io.IOException;
@@ -437,5 +442,24 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSellerInfoResponse.class).getSubscription();
     }
 
+    public FinancialReportDto getFinancialReport(String from, String to, int pageNumber) throws IOException, InterruptedException {
+        GetFinancialReportRequest request = new GetFinancialReportRequest();
+        FinancialReportPeriodDto period = new FinancialReportPeriodDto();
+
+        period.setFrom(from);
+        period.setTo(to);
+
+        request.setPeriod(period);
+        request.setPageNumber(pageNumber);
+        request.setWithDetails(true);
+        request.setPageSize(10);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.FINANCIAL_REPORT.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetFinancialReportResponse.class).getFinancialReport();
+    }
 
 }
