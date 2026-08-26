@@ -27,6 +27,9 @@ bin/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+hs_err_pid*.log
+replay_pid*.log
+tokens/
 
 ### NetBeans ###
 /nbproject/private/

@@ -1,0 +1,11 @@
+package com.example.OzonHelper.dto.request.returns;
+
+import com.example.OzonHelper.enums.ReturnVisualStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+
+@Data
+public class GetReturnListFilter {
+    @JsonProperty("visual_status_name")
+    private ReturnVisualStatus status;
+}
