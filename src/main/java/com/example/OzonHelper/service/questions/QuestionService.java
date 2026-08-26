@@ -21,8 +21,10 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,8 +43,9 @@ public class QuestionService {
     private final int ANSWER_COUNT_COLUMN_INDEX = 6;
     private final String QUESTIONS_COLUMNS_RANGE_START = "A";
     private final String QUESTIONS_COLUMNS_RANGE_END = "H";
-    private final SimpleRateLimiter limiter;
+    private final String questionsFrom = "01.01.2022";
 
+    private final SimpleRateLimiter limiter;
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
     private final GoogleClient googleClient;
@@ -69,15 +72,16 @@ public class QuestionService {
     public void syncQuestions() throws IOException, InterruptedException, ExecutionException {
         String spreadSheetId = sheetsProperties.getSheets().get(QUESTIONS_SPREADSHEET_KEY);
 
-        Instant from = LocalDateTime.of(2022, 1, 1, 0, 0).toInstant(ZoneOffset.UTC);
-        Instant to = Instant.now();
-
         for (OzonClient client : clients.values()) {
             System.out.println("client.getShopName() = " + client.getShopName());
 
             SubscriptionDto subscriptionInfo = client.getSubscriptionInfo();
 
-            if (subscriptionInfo.getType() != SubscriptionType.PREMIUM_PLUS) continue;
+            if (subscriptionInfo.getType() != SubscriptionType.PREMIUM_PLUS
+                    && subscriptionInfo.getType() != SubscriptionType.PREMIUM_PRO) continue;
+
+            Instant from = LocalDate.parse(questionsFrom, DateTimeFormatter.ofPattern("dd.MM.yyyy")).atStartOfDay().toInstant(ZoneOffset.UTC);
+            Instant to = Instant.now();
 
             List<QuestionDto> questionDtos = questionLoader.loadAllQuestions(client, from, to, QuestionStatus.ALL);
 
@@ -162,7 +166,6 @@ public class QuestionService {
         List<List<Object>> table = googleClient.readTable(spreadSheetId, "'" + title + "'");
         int nextEmptyRowNumber = sheetAnalyzer.findNextEmptyRowNumber(table);
         String range = buildQuestionsRange(title, nextEmptyRowNumber, newRows.size());
-        System.out.println(range);
         googleClient.writeTable(newRows, spreadSheetId, range);
     }
 
