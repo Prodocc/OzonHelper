@@ -15,6 +15,8 @@ import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
 import com.example.OzonHelper.dto.request.product.GetProductRequest;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsRequest;
+import com.example.OzonHelper.dto.request.returns.GetReturnListFilter;
+import com.example.OzonHelper.dto.request.returns.GetReturnListRequest;
 import com.example.OzonHelper.dto.response.PostingsReportCreateResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
@@ -34,9 +36,12 @@ import com.example.OzonHelper.dto.response.questions.GetQuestionsResponse;
 import com.example.OzonHelper.dto.response.questions.QuestionPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
 import com.example.OzonHelper.dto.response.report.GetAccrualTypeResponse;
+import com.example.OzonHelper.dto.response.returns.GetReturnGiveoutPNGResponse;
+import com.example.OzonHelper.dto.response.returns.GetReturnListResponse;
+import com.example.OzonHelper.dto.response.returns.ReturnDto;
 import com.example.OzonHelper.dto.response.seller.GetSellerInfoResponse;
 import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
-import com.example.OzonHelper.enums.ozon.*;
+import com.example.OzonHelper.enums.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 
@@ -433,6 +438,37 @@ public class OzonClient implements MarketplaceClient {
 
         return mapper.readValue(response.body(), GetSellerInfoResponse.class).getSubscription();
     }
+
+    public List<ReturnDto> getReturns() throws IOException, InterruptedException {
+        GetReturnListRequest request = new GetReturnListRequest();
+        GetReturnListFilter filter = new GetReturnListFilter();
+
+        filter.setStatus(ReturnVisualStatus.RETURN_VISUAL_STATUS_ARRIVED_AT_RETURN_PLACE);
+
+        request.setFilter(filter);
+        request.setLimit(10);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.RETURN_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetReturnListResponse.class).getReturns();
+    }
+
+    public GetReturnGiveoutPNGResponse getReturnGiveoutPng() throws IOException, InterruptedException {
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.RETURN_GIVEOUT_GET_PNG.getFullUrl(apiHost),
+                HttpRequest.BodyPublishers.noBody()
+        );
+
+        System.out.println(response.headers());
+        System.out.println(response.body());
+
+        return mapper.readValue(response.body(), GetReturnGiveoutPNGResponse.class);
+    }
+
+
 
 
 }

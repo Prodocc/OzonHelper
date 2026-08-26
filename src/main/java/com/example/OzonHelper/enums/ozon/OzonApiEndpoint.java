@@ -20,7 +20,9 @@ public enum OzonApiEndpoint {
     CHAT_HISTORY("/v3/chat/history"),
     ACCRUAL_TYPES("/v1/finance/accrual/types"),
     QUESTION_LIST("/v1/question/list"),
-    ANSWER_LIST("/v1/question/answer/list");
+    ANSWER_LIST("/v1/question/answer/list"),
+    RETURN_LIST("/v1/returns/list"),
+    RETURN_GIVEOUT_GET_PNG("/v1/return/giveout/get-png");
 
     private final String path;
 
