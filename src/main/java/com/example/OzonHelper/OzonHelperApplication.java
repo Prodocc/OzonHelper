@@ -36,8 +36,8 @@ public class OzonHelperApplication {
 //        QuestionService questionService = run.getBean("questionService", QuestionService.class);
 //        questionService.syncQuestions();
 
-        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
-        crossdockReportWatcher.watch();
+//        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
+//        crossdockReportWatcher.watch();
 
 //        ReportService reportService = run.getBean("reportService", ReportService.class);
 //        reportService.updateDailyReport(true);
