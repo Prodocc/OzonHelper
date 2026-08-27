@@ -3,6 +3,7 @@ package com.example.OzonHelper.client;
 import com.example.OzonHelper.config.OzonStoreConfig;
 import com.example.OzonHelper.domain.TimeSlotInterval;
 import com.example.OzonHelper.domain.Warehouse;
+import com.example.OzonHelper.dto.request.GetWarehousesRequest;
 import com.example.OzonHelper.dto.request.PostingsReportCreateFilter;
 import com.example.OzonHelper.dto.request.PostingsReportCreateRequest;
 import com.example.OzonHelper.dto.request.PostingsReportInfoRequest;
@@ -10,6 +11,7 @@ import com.example.OzonHelper.dto.request.answers.GetAnswersRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatHistoryRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
+import com.example.OzonHelper.dto.request.fbs.GetFBSWarehousesRequest;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
 import com.example.OzonHelper.dto.request.product.GetProductRequest;
@@ -17,6 +19,7 @@ import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsRequest;
 import com.example.OzonHelper.dto.request.returns.GetReturnListFilter;
 import com.example.OzonHelper.dto.request.returns.GetReturnListRequest;
+import com.example.OzonHelper.dto.response.GetWarehousesResponse;
 import com.example.OzonHelper.dto.response.PostingsReportCreateResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResponse;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
@@ -26,6 +29,8 @@ import com.example.OzonHelper.dto.response.chat.ChatDto;
 import com.example.OzonHelper.dto.response.chat.GetChatHistoryResponse;
 import com.example.OzonHelper.dto.response.chat.GetChatListResponse;
 import com.example.OzonHelper.dto.response.chat.MessageDto;
+import com.example.OzonHelper.dto.response.fbs.FBSWarehouseDto;
+import com.example.OzonHelper.dto.response.fbs.GetFBSWarehousesResponse;
 import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.request.fbo.*;
@@ -36,7 +41,7 @@ import com.example.OzonHelper.dto.response.questions.GetQuestionsResponse;
 import com.example.OzonHelper.dto.response.questions.QuestionPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
 import com.example.OzonHelper.dto.response.report.GetAccrualTypeResponse;
-import com.example.OzonHelper.dto.response.returns.GetReturnGiveoutPNGResponse;
+import com.example.OzonHelper.dto.response.returns.GetReturnBarcodePNGResponse;
 import com.example.OzonHelper.dto.response.returns.GetReturnListResponse;
 import com.example.OzonHelper.dto.response.returns.ReturnDto;
 import com.example.OzonHelper.dto.response.seller.GetSellerInfoResponse;
@@ -213,6 +218,32 @@ public class OzonClient implements MarketplaceClient {
                 request);
 
         return mapper.readValue(response.body(), GetClustersResponse.class).getClusters();
+    }
+
+    public List<FBSWarehouseDto> getFBSWarehouses() throws IOException, InterruptedException {
+        GetFBSWarehousesRequest request = new GetFBSWarehousesRequest();
+        request.setLimit(200);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.FBS_WAREHOUSES_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetFBSWarehousesResponse.class).getWarehouses();
+    }
+
+    public List<WarehouseDto> getWarehouses(List<WarehouseType> warehouseTypes) throws IOException, InterruptedException {
+        GetWarehousesRequest request = new GetWarehousesRequest();
+        request.setWarehouseType(warehouseTypes);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.ALL_WAREHOUSES_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        System.out.println(response.body());
+
+        return mapper.readValue(response.body(), GetWarehousesResponse.class).getWarehouses();
     }
 
     public long createSupplyCrossdockDraft(long sku, int quantity, Warehouse warehouse) throws IOException, InterruptedException {
@@ -439,7 +470,7 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSellerInfoResponse.class).getSubscription();
     }
 
-    public List<ReturnDto> getReturns() throws IOException, InterruptedException {
+    public List<ReturnDto> getReturns(String schema) throws IOException, InterruptedException {
         GetReturnListRequest request = new GetReturnListRequest();
         GetReturnListFilter filter = new GetReturnListFilter();
 
@@ -453,22 +484,19 @@ public class OzonClient implements MarketplaceClient {
                 request
         );
 
+        System.out.println(response.body());
+
         return mapper.readValue(response.body(), GetReturnListResponse.class).getReturns();
     }
 
-    public GetReturnGiveoutPNGResponse getReturnGiveoutPng() throws IOException, InterruptedException {
+    public String getReturnBarcodePng() throws IOException, InterruptedException {
         HttpResponse<String> response = createJsonBodyAndSendRequest(
-                OzonApiEndpoint.RETURN_GIVEOUT_GET_PNG.getFullUrl(apiHost),
+                OzonApiEndpoint.RETURN_BARCODE_GET_PNG.getFullUrl(apiHost),
                 HttpRequest.BodyPublishers.noBody()
         );
 
-        System.out.println(response.headers());
-        System.out.println(response.body());
-
-        return mapper.readValue(response.body(), GetReturnGiveoutPNGResponse.class);
+        return mapper.readValue(response.body(), GetReturnBarcodePNGResponse.class).getPng();
     }
-
-
 
 
 }

@@ -8,4 +8,6 @@ import lombok.Data;
 public class GetReturnListFilter {
     @JsonProperty("visual_status_name")
     private ReturnVisualStatus status;
+    @JsonProperty("return_schema")
+    private String returnSchema;
 }

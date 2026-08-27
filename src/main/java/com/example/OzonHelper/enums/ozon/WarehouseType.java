@@ -1,5 +1,6 @@
 package com.example.OzonHelper.enums.ozon;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 /**
@@ -14,6 +15,7 @@ public enum WarehouseType {
     DISTRIBUTION_CENTER("DISTRIBUTION_CENTER", "Распределительный центр"),
     DELIVERY_POINT("DELIVERY_POINT", "Пункт выдачи заказов");
 
+    @JsonValue
     private final String apiValue;
     @Getter
     private final String description;

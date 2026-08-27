@@ -1,14 +1,26 @@
 package com.example.OzonHelper;
 
-import com.example.OzonHelper.client.MaxClient;
-import com.example.OzonHelper.dto.response.max.UploadImageResponse;
-import com.example.OzonHelper.enums.max.ButtonType;
+import com.example.OzonHelper.client.OzonClient;
+import com.example.OzonHelper.domain.Return;
+import com.example.OzonHelper.domain.mapper.ReturnMapper;
+import com.example.OzonHelper.dto.response.fbo.ClusterDto;
+import com.example.OzonHelper.dto.response.fbo.WarehouseDto;
+import com.example.OzonHelper.dto.response.fbs.FBSWarehouseDto;
+import com.example.OzonHelper.dto.response.returns.ReturnDto;
+import com.example.OzonHelper.enums.ClusterType;
+import com.example.OzonHelper.enums.WarehouseType;
+import com.example.OzonHelper.service.CrossdockReportWatcher;
+import com.example.OzonHelper.service.ReportService;
+import com.example.OzonHelper.service.questions.QuestionService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.function.Consumer;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -16,28 +28,32 @@ public class OzonHelperApplication {
 
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
+//
+        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+        OzonClient client = ozonClients.get("4287264");
 
-        MaxClient client = run.getBean("maxClient", MaxClient.class);
-        client.addButton("414671305", "Получить возвраты", ButtonType.CALLBACK, "return_get");
-//        String chatId = "414671305";
-//        String text = "text";
-//        Path path = Path.of("data", "returns", "return-barcode_puresin_ecolife.png");
-//        client.sendImage(chatId, text, path);
-//        System.out.println(client.getBotInfo());
+//        List<WarehouseDto> warehouses = client.getWarehouses(List.of(WarehouseType.ORDERS_RECEIVING_POINT));
+//        warehouses.forEach(System.out::println);
+//
+        List<ReturnDto> returnDtos = client.getReturns("FBS");
+//
+        ReturnMapper returnMapper = new ReturnMapper();
+//
+        List<Return> returns = returnDtos.stream()
+                .map(returnMapper::mapToModel)
+                .toList();
 
-//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
-//        ozonClients.values().forEach(client -> {
-//            System.out.println("client.getShopName() = " + client.getShopName());
-//            try {
-//                System.out.println(client.getSubscriptionInfo().getType());
-//            } catch (IOException | InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-//        });
-
+        returns.forEach(System.out::println);
+//
+//        String png = client.getReturnBarcodePng();
+//
+//        byte[] decode = Base64.getDecoder().decode(png);
+//        Path path = Path.of("data", "returns", "return-barcode_" + client.getShopName() + ".png");
+//        Files.write(path, decode);
+//
 //        QuestionService questionService = run.getBean("questionService", QuestionService.class);
 //        questionService.syncQuestions();
-
+//
 //        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
 //        crossdockReportWatcher.watch();
 
@@ -47,4 +63,5 @@ public class OzonHelperApplication {
 
         System.exit(0);
     }
+
 }
