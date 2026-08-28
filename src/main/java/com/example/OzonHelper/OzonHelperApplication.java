@@ -1,5 +1,6 @@
 package com.example.OzonHelper;
 
+import com.example.OzonHelper.client.MaxClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.dto.response.product.ProductDto;
 import com.example.OzonHelper.service.CrossdockReportWatcher;
@@ -11,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.Consumer;
@@ -21,8 +23,11 @@ public class OzonHelperApplication {
 
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
-//
-        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+
+        MaxClient client = run.getBean("maxClient", MaxClient.class);
+        System.out.println(client.getBotInfo());
+
+//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
 //        ozonClients.values().forEach(client -> {
 //            System.out.println("client.getShopName() = " + client.getShopName());
 //            try {
