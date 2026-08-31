@@ -1,7 +1,9 @@
 package com.example.OzonHelper.enums;
 
 public enum MaxApiEndpoint {
-    BOT_INFO("/me");
+    BOT_INFO("/me"),
+    SUBSCRIPTIONS("/subscriptions"),
+    MESSAGES("/messages");
 
     private final String path;
 

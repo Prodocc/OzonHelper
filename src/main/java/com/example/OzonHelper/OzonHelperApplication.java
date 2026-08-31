@@ -2,6 +2,7 @@ package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.MaxClient;
 import com.example.OzonHelper.client.OzonClient;
+import com.example.OzonHelper.dto.response.max.PostWebHookSubscriptionResponse;
 import com.example.OzonHelper.dto.response.product.ProductDto;
 import com.example.OzonHelper.service.CrossdockReportWatcher;
 import com.example.OzonHelper.service.ReportService;
@@ -25,7 +26,7 @@ public class OzonHelperApplication {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
         MaxClient client = run.getBean("maxClient", MaxClient.class);
-        System.out.println(client.getBotInfo());
+//        System.out.println(client.getBotInfo());
 
 //        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
 //        ozonClients.values().forEach(client -> {
@@ -36,7 +37,6 @@ public class OzonHelperApplication {
 //                throw new RuntimeException(e);
 //            }
 //        });
-
 
 //        QuestionService questionService = run.getBean("questionService", QuestionService.class);
 //        questionService.syncQuestions();
@@ -50,5 +50,4 @@ public class OzonHelperApplication {
 
         System.exit(0);
     }
-
 }
