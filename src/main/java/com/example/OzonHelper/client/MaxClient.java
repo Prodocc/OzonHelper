@@ -1,12 +1,17 @@
 package com.example.OzonHelper.client;
 
 import com.example.OzonHelper.config.MaxBotConfig;
-import com.example.OzonHelper.dto.request.max.PostWebHookSubscriptionRequest;
+import com.example.OzonHelper.dto.request.max.*;
 import com.example.OzonHelper.dto.response.max.*;
-import com.example.OzonHelper.enums.MaxApiEndpoint;
-import com.example.OzonHelper.enums.MaxUpdateType;
+import com.example.OzonHelper.enums.max.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
+import org.apache.commons.math3.analysis.function.Add;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,6 +21,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 
 @Data
 public class MaxClient {
@@ -26,13 +32,15 @@ public class MaxClient {
     private final String token;
     private final String apiHost;
     private final HttpClient httpClient;
+    private final RestClient restClient;
     private final ObjectMapper mapper;
 
-    public MaxClient(MaxBotConfig config, String maxApiHost, HttpClient httpClient, ObjectMapper objectMapper) {
+    public MaxClient(MaxBotConfig config, String maxApiHost, HttpClient httpClient, RestClient restClient, ObjectMapper objectMapper) {
         this.name = config.getName();
         this.token = config.getToken();
         this.apiHost = maxApiHost;
         this.httpClient = httpClient;
+        this.restClient = restClient;
         this.mapper = objectMapper;
     }
 
@@ -47,6 +55,19 @@ public class MaxClient {
         return sendGetRequest(url, requestJsonBody);
     }
 
+    private HttpResponse<String> sendEmptyPostRequest(String url) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", token)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        checkResponse(response);
+
+        return response;
+    }
+
     private HttpResponse<String> sendGetRequest(String url, String requestBodyJson) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -55,7 +76,10 @@ public class MaxClient {
                 .GET()
                 .build();
 
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        checkResponse(response);
+
+        return response;
     }
 
     private HttpResponse<String> sendPostRequest(String url, String requestBodyJson) throws IOException, InterruptedException {
@@ -66,7 +90,28 @@ public class MaxClient {
                 .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson, StandardCharsets.UTF_8))
                 .build();
 
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        checkResponse(response);
+
+        return response;
+    }
+
+    private String sendMediaPostRequest(
+            String url,
+            Path filePath) {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+        body.add(
+                "data",
+                new FileSystemResource(filePath)
+        );
+
+        return restClient.post()
+                .uri(URI.create(url))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(body)
+                .retrieve()
+                .body(String.class);
     }
 
     public GetBotInfoResponse getBotInfo() throws IOException, InterruptedException {
@@ -75,8 +120,6 @@ public class MaxClient {
                 HttpRequest.BodyPublishers.noBody()
         );
 
-        System.out.println(response.body());
-
         return mapper.readValue(response.body(), GetBotInfoResponse.class);
     }
 
@@ -84,7 +127,7 @@ public class MaxClient {
         PostWebHookSubscriptionRequest request = new PostWebHookSubscriptionRequest();
 
         request.setUrl(WEBHOOK_URL);
-        request.setUpdateTypes(Collections.singletonList(MaxUpdateType.MESSAGE_CREATED));
+        request.setUpdateTypes(Collections.singletonList(UpdateType.MESSAGE_CREATED));
         request.setSecret(SECRET);
 
         HttpResponse<String> response = createJsonBodyAndSendPostRequest(
@@ -95,24 +138,77 @@ public class MaxClient {
         return mapper.readValue(response.body(), PostWebHookSubscriptionResponse.class);
     }
 
-    public void sendImage(String chatId) throws IOException, InterruptedException {
+    private GetUploadURLResponse getUploadImageUrl() throws IOException, InterruptedException {
+        HttpResponse<String> response = sendEmptyPostRequest(
+                MaxApiEndpoint.UPLOADS.getFullUrl(apiHost)
+                        + "?type=" + UploadType.IMAGE.getApiValue()
+        );
+
+        return mapper.readValue(response.body(), GetUploadURLResponse.class);
+    }
+
+    private UploadImageResponse uploadImage(Path filePath) throws IOException, InterruptedException {
+        GetUploadURLResponse uploadUrl = getUploadImageUrl();
+
+        String responseBody = sendMediaPostRequest(
+                uploadUrl.getUrl(),
+                filePath
+        );
+
+        return mapper.readValue(responseBody, UploadImageResponse.class);
+    }
+
+    public void sendImage(String chatId, String text, Path filePath) throws IOException, InterruptedException {
+        UploadImageResponse uploadImageResponse = uploadImage(filePath);
+
         SendImageRequest request = new SendImageRequest();
         ImageAttachmentDto attachment = new ImageAttachmentDto();
         ImageAttachmentPayloadDto payload = new ImageAttachmentPayloadDto();
-        payload.setUrl(Path.of("data", "returns", "return-barcode_puresin_ecolife.png").toUri().toString());
+        payload.setPhotos(uploadImageResponse.getPhotos());
 
-        attachment.setType("image");
+        attachment.setType(AttachmentType.IMAGE);
         attachment.setPayload(payload);
 
         request.setAttachments(Collections.singletonList(attachment));
-        request.setText("text");
+        request.setText(text);
         request.setNotify(true);
 
-        HttpResponse<String> response = createJsonBodyAndSendPostRequest(
+        createJsonBodyAndSendPostRequest(
                 MaxApiEndpoint.MESSAGES.getFullUrl(apiHost) + "?chat_id=" + chatId,
                 request
         );
+    }
 
-        System.out.println(response.body());
+    public void addButton(String chatId, String label, ButtonType type, String callbackData) throws IOException, InterruptedException {
+        AddButtonRequest request = new AddButtonRequest();
+        ButtonAttachmentDto attachment = new ButtonAttachmentDto();
+        ButtonAttachmentPayloadDto payload = new ButtonAttachmentPayloadDto();
+
+        ButtonDto button = new ButtonDto();
+        button.setText(label);
+        button.setType(type);
+        button.setPayload(callbackData);
+
+        payload.setButtons(List.of(Collections.singletonList(button)));
+        attachment.setType(AttachmentType.KEYBOARD);
+        attachment.setPayload(payload);
+        request.setAttachments(List.of(attachment));
+        request.setText("Test button");
+
+        createJsonBodyAndSendPostRequest(
+                MaxApiEndpoint.MESSAGES.getFullUrl(apiHost) + "?chat_id=" + chatId,
+                request
+        );
+    }
+
+    private void checkResponse(HttpResponse<String> response) {
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new RuntimeException(
+                    "MAX API error" +
+                            response.statusCode() +
+                            ", body: " +
+                            response.body()
+            );
+        }
     }
 }

@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.response.answers;
 
-import com.example.OzonHelper.enums.AnswerStatus;
+import com.example.OzonHelper.enums.ozon.AnswerStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 

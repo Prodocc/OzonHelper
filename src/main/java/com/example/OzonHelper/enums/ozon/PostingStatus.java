@@ -1,4 +1,4 @@
-package com.example.OzonHelper.enums;
+package com.example.OzonHelper.enums.ozon;
 
 import lombok.Getter;
 

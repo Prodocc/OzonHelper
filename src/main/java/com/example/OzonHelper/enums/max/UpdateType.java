@@ -1,9 +1,9 @@
-package com.example.OzonHelper.enums;
+package com.example.OzonHelper.enums.max;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
-public enum MaxUpdateType {
+public enum UpdateType {
     BOT_ADDED("bot_added","Бот добавлен в чат или канал"),
     MESSAGE_CREATED("message_created","Пользователь отправил новое сообщение или опубликовал пост");
 
@@ -12,7 +12,7 @@ public enum MaxUpdateType {
     @Getter
     private final String description;
 
-    MaxUpdateType(String apiValue, String description) {
+    UpdateType(String apiValue, String description) {
         this.apiValue = apiValue;
         this.description = description;
     }

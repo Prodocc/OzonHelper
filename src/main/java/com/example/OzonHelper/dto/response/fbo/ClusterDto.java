@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.response.fbo;
 
-import com.example.OzonHelper.enums.ClusterType;
+import com.example.OzonHelper.enums.ozon.ClusterType;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 

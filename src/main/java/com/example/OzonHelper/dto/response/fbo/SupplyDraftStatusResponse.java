@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.response.fbo;
 
-import com.example.OzonHelper.enums.DraftCreateStatus;
+import com.example.OzonHelper.enums.ozon.DraftCreateStatus;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

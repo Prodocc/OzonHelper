@@ -1,6 +1,6 @@
 package com.example.OzonHelper.domain;
 
-import com.example.OzonHelper.enums.WarehouseType;
+import com.example.OzonHelper.enums.ozon.WarehouseType;
 import lombok.Data;
 
 import java.util.List;

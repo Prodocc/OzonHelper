@@ -1,14 +1,11 @@
 package com.example.OzonHelper.dto.request.fbo;
 
-import com.example.OzonHelper.dto.response.fbo.TimeSlotDto;
-import com.example.OzonHelper.enums.SupplyType;
+import com.example.OzonHelper.enums.ozon.SupplyType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.springframework.cglib.core.Local;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data

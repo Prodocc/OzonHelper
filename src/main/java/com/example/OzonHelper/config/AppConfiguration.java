@@ -7,11 +7,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.web.client.RestClient;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -92,8 +95,20 @@ public class AppConfiguration {
 
     @Bean
     public MaxClient maxClient(MaxBotConfig maxBotConfig, @Value("${max.api.host}") String maxApiHost,
-                               @Qualifier("maxHttpClient") HttpClient httpClient, ObjectMapper mapper) {
-        return new MaxClient(maxBotConfig, maxApiHost, httpClient, mapper);
+                               @Qualifier("maxHttpClient") HttpClient httpClient, RestClient restClient, ObjectMapper mapper) {
+        return new MaxClient(maxBotConfig, maxApiHost, httpClient, restClient, mapper);
+    }
+
+    @Bean
+    @Qualifier("maxRestClient")
+    public RestClient maxRestClient(
+            @Qualifier("maxHttpClient") HttpClient maxHttpClient) {
+        JdkClientHttpRequestFactory requestFactory
+                = new JdkClientHttpRequestFactory(maxHttpClient);
+
+        return RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     @Bean

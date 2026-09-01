@@ -9,8 +9,8 @@ import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.*;
-import com.example.OzonHelper.enums.ClusterType;
-import com.example.OzonHelper.enums.SupplyState;
+import com.example.OzonHelper.enums.ozon.ClusterType;
+import com.example.OzonHelper.enums.ozon.SupplyState;
 import com.example.OzonHelper.parser.ReportCSVParser;
 import com.example.OzonHelper.parser.ReportExcelParser;
 import com.example.OzonHelper.service.report.crossdock.CrossDockDataBuilder;
@@ -25,14 +25,12 @@ import org.mockito.ArgumentCaptor;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
-import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.mockito.Mockito.*;
 
 public class ReportServiceTest {

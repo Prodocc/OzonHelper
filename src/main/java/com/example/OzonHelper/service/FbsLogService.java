@@ -2,7 +2,7 @@ package com.example.OzonHelper.service;
 
 import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
-import com.example.OzonHelper.enums.SheetColors;
+import com.example.OzonHelper.enums.ozon.SheetColors;
 import com.example.OzonHelper.util.*;
 import com.google.api.services.sheets.v4.model.GridRange;
 import com.google.api.services.sheets.v4.model.Sheet;
