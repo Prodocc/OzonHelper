@@ -19,6 +19,7 @@ public class SupplyOrderLoader {
         String lastId = null;
         do {
             page = client.getSupplyOrdersIds(lastId, state);
+            if (page == null) break;
             result.addAll(page.orderIds());
             lastId = page.nextCursor();
             Thread.sleep(1000);

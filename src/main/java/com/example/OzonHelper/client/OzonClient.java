@@ -62,8 +62,6 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 
-//TODO: split from ozonclient to -> FBSClient/FBOClient maybe
-
 @Data
 public class OzonClient implements MarketplaceClient {
 
@@ -470,11 +468,11 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSellerInfoResponse.class).getSubscription();
     }
 
-    public List<ReturnDto> getReturns(String schema) throws IOException, InterruptedException {
+    public List<ReturnDto> getReturns(String schema, ReturnVisualStatus status) throws IOException, InterruptedException {
         GetReturnListRequest request = new GetReturnListRequest();
         GetReturnListFilter filter = new GetReturnListFilter();
 
-        filter.setStatus(ReturnVisualStatus.RETURN_VISUAL_STATUS_ARRIVED_AT_RETURN_PLACE);
+        filter.setStatus(status);
 
         request.setFilter(filter);
         request.setLimit(10);

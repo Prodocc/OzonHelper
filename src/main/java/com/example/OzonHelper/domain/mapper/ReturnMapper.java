@@ -6,7 +6,9 @@ import com.example.OzonHelper.domain.Warehouse;
 import com.example.OzonHelper.dto.response.returns.ReturnDto;
 import com.example.OzonHelper.dto.response.returns.ReturnProductInfoDto;
 import com.example.OzonHelper.dto.response.returns.ReturnWarehouseDto;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ReturnMapper {
 
     public Return mapToModel(ReturnDto dto) {
