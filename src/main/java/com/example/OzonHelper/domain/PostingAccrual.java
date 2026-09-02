@@ -1,6 +1,6 @@
 package com.example.OzonHelper.domain;
 
-import com.example.OzonHelper.enums.AccrualType;
+import com.example.OzonHelper.enums.ozon.AccrualType;
 import lombok.Data;
 
 import java.math.BigDecimal;

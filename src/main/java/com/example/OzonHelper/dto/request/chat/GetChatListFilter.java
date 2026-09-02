@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.request.chat;
 
-import com.example.OzonHelper.enums.ChatStatus;
+import com.example.OzonHelper.enums.ozon.ChatStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 

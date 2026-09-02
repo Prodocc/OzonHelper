@@ -1,12 +1,8 @@
-package com.example.OzonHelper.enums;
+package com.example.OzonHelper.enums.ozon;
 
-import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 import java.util.Arrays;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public enum AccrualType {
     ACQUIRING("Acquiring", "Эквайринг", 1),

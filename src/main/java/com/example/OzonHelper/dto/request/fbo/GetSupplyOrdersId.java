@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.request.fbo;
 
-import com.example.OzonHelper.enums.SupplySortStatus;
+import com.example.OzonHelper.enums.ozon.SupplySortStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 

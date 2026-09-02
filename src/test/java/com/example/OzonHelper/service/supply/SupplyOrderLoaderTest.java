@@ -3,12 +3,11 @@ package com.example.OzonHelper.service.supply;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrdersPage;
-import com.example.OzonHelper.enums.SupplyState;
+import com.example.OzonHelper.enums.ozon.SupplyState;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 

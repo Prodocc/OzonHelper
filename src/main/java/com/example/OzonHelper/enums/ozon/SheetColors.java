@@ -1,7 +1,6 @@
-package com.example.OzonHelper.enums;
+package com.example.OzonHelper.enums.ozon;
 
 import com.google.api.services.sheets.v4.model.Color;
-import com.google.api.services.sheets.v4.model.Sheet;
 
 public enum SheetColors {
     FBS_LIST_DATE_COLOR(255, 217, 102);

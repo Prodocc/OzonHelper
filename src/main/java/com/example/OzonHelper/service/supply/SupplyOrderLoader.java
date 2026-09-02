@@ -3,7 +3,7 @@ package com.example.OzonHelper.service.supply;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrderDto;
 import com.example.OzonHelper.dto.response.fbo.SupplyOrdersPage;
-import com.example.OzonHelper.enums.SupplyState;
+import com.example.OzonHelper.enums.ozon.SupplyState;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;

@@ -1,6 +1,6 @@
 package com.example.OzonHelper.domain;
 
-import com.example.OzonHelper.enums.QuestionStatus;
+import com.example.OzonHelper.enums.ozon.QuestionStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;

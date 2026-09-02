@@ -1,13 +1,9 @@
 package com.example.OzonHelper.dto.request.fbo;
 
-import com.example.OzonHelper.dto.response.fbo.GetClustersResponse;
-import com.example.OzonHelper.enums.SupplyMethod;
-import com.example.OzonHelper.enums.SupplyType;
-import com.example.OzonHelper.enums.WarehouseType;
+import com.example.OzonHelper.enums.ozon.SupplyMethod;
+import com.example.OzonHelper.enums.ozon.WarehouseType;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AccessLevel;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
 public class DeliveryInfoDto {

@@ -1,7 +1,6 @@
 package com.example.OzonHelper.dto.response.fbo;
 
-import com.example.OzonHelper.enums.SupplyCreateErrorReason;
-import com.example.OzonHelper.enums.SupplyDraftCreateErrorReason;
+import com.example.OzonHelper.enums.ozon.SupplyCreateErrorReason;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

@@ -1,14 +1,10 @@
 package com.example.OzonHelper.service;
 
 import com.example.OzonHelper.client.OzonClient;
-import com.example.OzonHelper.enums.PostingStatus;
 import lombok.AllArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service

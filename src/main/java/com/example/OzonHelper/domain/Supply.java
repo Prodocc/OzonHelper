@@ -1,10 +1,9 @@
 package com.example.OzonHelper.domain;
 
-import com.example.OzonHelper.enums.SupplyState;
+import com.example.OzonHelper.enums.ozon.SupplyState;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 public class Supply {

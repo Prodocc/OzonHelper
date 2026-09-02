@@ -2,7 +2,7 @@ package com.example.OzonHelper.domain.mapper;
 
 import com.example.OzonHelper.domain.PostingAccrual;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
-import com.example.OzonHelper.enums.AccrualType;
+import com.example.OzonHelper.enums.ozon.AccrualType;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

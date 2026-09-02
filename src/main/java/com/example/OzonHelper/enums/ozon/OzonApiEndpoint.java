@@ -1,4 +1,4 @@
-package com.example.OzonHelper.enums;
+package com.example.OzonHelper.enums.ozon;
 
 public enum OzonApiEndpoint {
     PRODUCT_LIST("/v3/product/info/list"),

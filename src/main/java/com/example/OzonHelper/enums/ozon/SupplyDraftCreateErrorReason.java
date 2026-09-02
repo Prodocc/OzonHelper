@@ -1,4 +1,4 @@
-package com.example.OzonHelper.enums;
+package com.example.OzonHelper.enums.ozon;
 
 public enum SupplyDraftCreateErrorReason {
     UNSPECIFIED("UNSPECIFIED"),

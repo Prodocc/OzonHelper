@@ -1,19 +1,14 @@
 package com.example.OzonHelper;
 
-import com.example.OzonHelper.client.OzonClient;
-import com.example.OzonHelper.dto.response.product.ProductDto;
-import com.example.OzonHelper.service.CrossdockReportWatcher;
-import com.example.OzonHelper.service.ReportService;
-import com.example.OzonHelper.service.questions.QuestionService;
+import com.example.OzonHelper.client.MaxClient;
+import com.example.OzonHelper.dto.response.max.UploadImageResponse;
+import com.example.OzonHelper.enums.max.ButtonType;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import java.io.IOException;
 import java.nio.file.*;
-import java.util.*;
-import java.util.function.Consumer;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -21,8 +16,16 @@ public class OzonHelperApplication {
 
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
-//
-        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+
+        MaxClient client = run.getBean("maxClient", MaxClient.class);
+        client.addButton("414671305", "Получить возвраты", ButtonType.CALLBACK, "return_get");
+//        String chatId = "414671305";
+//        String text = "text";
+//        Path path = Path.of("data", "returns", "return-barcode_puresin_ecolife.png");
+//        client.sendImage(chatId, text, path);
+//        System.out.println(client.getBotInfo());
+
+//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
 //        ozonClients.values().forEach(client -> {
 //            System.out.println("client.getShopName() = " + client.getShopName());
 //            try {
@@ -32,7 +35,6 @@ public class OzonHelperApplication {
 //            }
 //        });
 
-
 //        QuestionService questionService = run.getBean("questionService", QuestionService.class);
 //        questionService.syncQuestions();
 
@@ -40,10 +42,9 @@ public class OzonHelperApplication {
 //        crossdockReportWatcher.watch();
 
 //        ReportService reportService = run.getBean("reportService", ReportService.class);
-//        reportService.updateDailyReport(true);
+//        reportService.updateDailyReport(false);
 //        reportService.processCrossdockReport("123", Path.of("1"));
 
         System.exit(0);
     }
-
 }
