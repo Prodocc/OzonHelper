@@ -50,6 +50,7 @@ public class ReportService {
     private final int ACCRUAL_REPORT_TYPE_FIELD_INDEX = 3;
     private final int ACCRUAL_REPORT_CARGO_SPACE_COUNT_FIELD_INDEX = 7;
     private final int ACCRUAL_REPORT_SUM_FIELD_INDEX = 15;
+    private final int POSTINGS_NORMALIZED_COLUMNS_SIZE = 27;
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
@@ -515,13 +516,25 @@ public class ReportService {
             return List.of();
         }
 
-        postings = csvParser.filterCSV(postings, "Отменён"); // filtered
+        List<List<String>> normalizedPostings = normalizePostingData(postings);
+        normalizedPostings = csvParser.filterCSV(normalizedPostings, "Отменён"); // filtered
 
         List<PostingDto> postingDtos = new ArrayList<>();
-        for (List<String> tmpPosting : postings) {
+        for (List<String> tmpPosting : normalizedPostings) {
             postingDtos.add(postingDtoMapper.mapToModel(tmpPosting));
         }
         return postingDtos;
+    }
+
+    private List<List<String>> normalizePostingData(List<List<String>> postings) {
+        int indexToRemove = 2;
+
+        if (postings.get(0).size() > POSTINGS_NORMALIZED_COLUMNS_SIZE) {
+            for (List<String> posting : postings) {
+                posting.remove(indexToRemove);
+            }
+        }
+        return postings;
     }
 
     private List<PostingDto> filterPostingsForPeriod(List<PostingDto> postings, LocalDateTime from, LocalDateTime to) {
