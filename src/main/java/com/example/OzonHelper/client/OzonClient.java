@@ -46,7 +46,8 @@ import com.example.OzonHelper.dto.response.returns.GetReturnListResponse;
 import com.example.OzonHelper.dto.response.returns.ReturnDto;
 import com.example.OzonHelper.dto.response.seller.GetSellerInfoResponse;
 import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
-import com.example.OzonHelper.enums.*;
+import com.example.OzonHelper.enums.ozon.ReturnVisualStatus;
+import com.example.OzonHelper.enums.ozon.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 

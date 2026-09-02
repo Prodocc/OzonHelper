@@ -1,12 +1,13 @@
 package com.example.OzonHelper.service;
 
 import com.example.OzonHelper.client.GoogleClient;
+import com.example.OzonHelper.client.MaxClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.Return;
 import com.example.OzonHelper.domain.mapper.ReturnMapper;
 import com.example.OzonHelper.dto.response.returns.ReturnDto;
-import com.example.OzonHelper.enums.ReturnVisualStatus;
+import com.example.OzonHelper.enums.ozon.ReturnVisualStatus;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Predicate;
 
 @Service
 public class ReturnService {
@@ -24,22 +24,25 @@ public class ReturnService {
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
+    private final MaxClient maxClient;
     private final GoogleClient googleClient;
     private final SheetAnalyzer sheetAnalyzer;
     private final ReturnMapper returnMapper;
 
     public ReturnService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties,
-                         GoogleClient googleClient, SheetAnalyzer sheetAnalyzer, ReturnMapper returnMapper) {
+                         GoogleClient googleClient, MaxClient maxClient, SheetAnalyzer sheetAnalyzer, ReturnMapper returnMapper) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
+        this.maxClient = maxClient;
         this.sheetAnalyzer = sheetAnalyzer;
         this.returnMapper = returnMapper;
     }
 
-    public void sendReturnBarcodeNotifications() {
+    public void sendReturnBarcodeNotifications(String chatId) {
         Map<String, List<Return>> returnsByLegalEntity = new HashMap<>();
-        Map<OzonClient, Path> barcodePngsByClient = new HashMap<>();
+        Map<String, OzonClient> clientsByLegalEntity = new HashMap<>();
+        Map<String, Path> barcodePngsByLegalEntity = new HashMap<>();
 
         clients.forEach(
                 (s, client) -> {
@@ -50,8 +53,9 @@ public class ReturnService {
 
                         if (!returns.isEmpty()) {
                             returnsByLegalEntity
-                                    .computeIfAbsent(client.getLegalEntity(), client1 -> new ArrayList<>())
+                                    .computeIfAbsent(client.getLegalEntity(), legalEntity -> new ArrayList<>())
                                     .addAll(returns);
+                            clientsByLegalEntity.putIfAbsent(client.getLegalEntity(), client);
                         }
                     } catch (IOException | InterruptedException e) {
                         throw new RuntimeException(e);
@@ -60,35 +64,41 @@ public class ReturnService {
         );
 
         System.out.println(returnsByLegalEntity);
+        System.out.println(clientsByLegalEntity);
 
-        returnsByLegalEntity.forEach(
-                (legalEntity, returns) -> {
-                    String png = null;
-                    try {
-                        OzonClient ozonClient = clients
-                                .values()
-                                .stream()
-                                .filter(client -> client.getLegalEntity().equals(legalEntity))
-                                .findFirst().get();
+        returnsByLegalEntity.keySet().forEach(legalEntity -> {
+            try {
+                OzonClient client = clientsByLegalEntity.get(legalEntity);
 
-                        png = ozonClient.getReturnBarcodePng();
-                        byte[] decode = Base64.getDecoder().decode(png);
-                        Path path = Path.of("data", "returns", "return-barcode_" + ozonClient.getShopName() + ".png");
-                        Files.write(path, decode);
-                        barcodePngsByClient.put(ozonClient, path);
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                String png = client.getReturnBarcodePng();
+                byte[] decode = Base64.getDecoder().decode(png);
+                Path path = Path.of("data", "returns", "return-barcode_" + client.getShopName() + ".png");
+                Files.write(path, decode);
+                barcodePngsByLegalEntity.put(legalEntity, path);
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
-        System.out.println(barcodePngsByClient);
+        System.out.println(barcodePngsByLegalEntity);
 
-        for (OzonClient client : barcodePngsByClient.keySet()){
+        for (String legalEntity : barcodePngsByLegalEntity.keySet()) {
+            try {
+                StringBuilder sb = new StringBuilder();
+                for (Return shopReturn : returnsByLegalEntity.get(legalEntity)) {
+                    sb.append(shopReturn.getProduct().getQuantity());
+                    sb.append(" - ");
+                    sb.append(shopReturn.getProduct().getArticle());
+                    sb.append("\n");
+                }
+                sb.append(returnsByLegalEntity.get(legalEntity).get(0).getWarehouse().getAddress());
+                sb.append("\n");
+                sb.append(legalEntity);
 
+                maxClient.sendImage(chatId, sb.toString(), barcodePngsByLegalEntity.get(legalEntity));
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
-//
-//                //for each client in barcodePngsByLegalEntity
-//                //send png image to chat + LegalEntity string
-//        );
     }
 }

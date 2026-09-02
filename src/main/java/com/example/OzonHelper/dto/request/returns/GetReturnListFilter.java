@@ -1,6 +1,6 @@
 package com.example.OzonHelper.dto.request.returns;
 
-import com.example.OzonHelper.enums.ReturnVisualStatus;
+import com.example.OzonHelper.enums.ozon.ReturnVisualStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
