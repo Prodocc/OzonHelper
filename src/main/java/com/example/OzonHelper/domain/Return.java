@@ -10,4 +10,5 @@ public class Return {
     private String postingNumber;
     private Product product;
     private String labelBarcode;
+    private String returnActNumber;
 }

@@ -10,4 +10,6 @@ public class GetReturnListFilter {
     private ReturnVisualStatus status;
     @JsonProperty("return_schema")
     private String returnSchema;
+    @JsonProperty("barcode")
+    private String barcode;
 }

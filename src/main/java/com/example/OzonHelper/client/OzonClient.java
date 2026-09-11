@@ -471,11 +471,12 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetSellerInfoResponse.class).getSubscription();
     }
 
-    public List<ReturnDto> getReturns(String schema, ReturnVisualStatus status) throws IOException, InterruptedException {
+    public List<ReturnDto> getReturnsByStatus(String schema, ReturnVisualStatus status) throws IOException, InterruptedException {
         GetReturnListRequest request = new GetReturnListRequest();
         GetReturnListFilter filter = new GetReturnListFilter();
 
         filter.setStatus(status);
+        filter.setReturnSchema(schema);
 
         request.setFilter(filter);
         request.setLimit(10);
@@ -485,6 +486,26 @@ public class OzonClient implements MarketplaceClient {
                 request
         );
 
+        System.out.println(response.body());
+
+        return mapper.readValue(response.body(), GetReturnListResponse.class).getReturns();
+    }
+
+    public List<ReturnDto> getReturnByBarcode(String barcode) throws IOException, InterruptedException {
+        GetReturnListRequest request = new GetReturnListRequest();
+        GetReturnListFilter filter = new GetReturnListFilter();
+
+        filter.setBarcode(barcode);
+
+        request.setFilter(filter);
+        request.setLimit(10);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.RETURN_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        System.out.println(response);
         System.out.println(response.body());
 
         return mapper.readValue(response.body(), GetReturnListResponse.class).getReturns();

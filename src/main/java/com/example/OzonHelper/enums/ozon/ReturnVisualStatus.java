@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 public enum ReturnVisualStatus {
-    RETURN_VISUAL_STATUS_ARRIVED_AT_RETURN_PLACE(
-            "ArrivedAtReturnPlace", "В пункте выдачи");
+    ARRIVED_AT_RETURN_PLACE("ArrivedAtReturnPlace", "В пункте выдачи"),
+    RECEIVED_BY_SELLER("ReceivedBySeller", "Продавец получил возврат");
 
 
     @Getter(onMethod_ = @JsonValue)
