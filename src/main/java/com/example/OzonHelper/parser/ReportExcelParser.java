@@ -26,7 +26,6 @@ public class ReportExcelParser {
         try (InputStream input = Files.newInputStream(path);
              Workbook workbook = new XSSFWorkbook(input)) {
 
-
             Sheet sheet = workbook.getSheetAt(0);
 
             Row headerRow = sheet.getRow(2);

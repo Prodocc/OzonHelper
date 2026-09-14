@@ -7,6 +7,7 @@ import com.example.OzonHelper.domain.*;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
+import com.example.OzonHelper.dto.report.ozon.CostPriceDto;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.*;
@@ -26,11 +27,13 @@ import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.example.OzonHelper.util.GoogleUtils.colIndexToLetter;
@@ -44,6 +47,7 @@ public class ReportService {
     private final int SKU_COLUMN_INDEX = 2;
     private final String SALES_REPORT_SPREADSHEET_KEY = "sales-report-table";
     private final String CROSSDOCK_REPORT_SPREADSHEET_KEY = "crossdock-report-table";
+    private final String STOCKS_REPORT_SPREADSHEET_KEY = "stocks-report-table";
     private final String DAILY_REPORT_SHEET_NAME = "Продажи ежедневные";
     private final String WEEKLY_REPORT_SHEET_NAME = "Продажи еженедельные";
     private final int ACCRUAL_REPORT_SUPPLY_ID_FIELD_INDEX = 0;
@@ -82,6 +86,28 @@ public class ReportService {
         this.crossDockDataBuilder = crossDockDataBuilder;
         this.crossDockSupplyBuilder = crossDockSupplyBuilder;
         this.supplyOrderLoader = supplyOrderLoader;
+    }
+
+    public void processStocksReport(Path costPriceTable) throws CsvValidationException, IOException {
+        List<List<String>> costPriceList = excelParser.readCSV(costPriceTable);
+
+        List<CostPriceDto> costPriceDtos = buildCostPriceDto(costPriceList);
+        costPriceDtos.forEach(System.out::println);
+
+        Map<String, BigDecimal> costPriceMap = costPriceDtos
+                .stream()
+                .collect(Collectors.toMap(
+                        CostPriceDto::getArticle,
+                        new Function<CostPriceDto, BigDecimal>() {
+                            @Override
+                            public BigDecimal apply(CostPriceDto dto) {
+                                System.out.println(dto.getCostPrice());
+                                return new BigDecimal(dto.getCostPrice());
+                            }
+                        }
+                ));
+
+        System.out.println(costPriceMap);
     }
 
     public void processCrossdockReport(String clientId, Path fullPath) throws CsvValidationException, IOException, InterruptedException {
@@ -165,6 +191,18 @@ public class ReportService {
             dto.setSum(list.get(ACCRUAL_REPORT_SUM_FIELD_INDEX));
             dto.setType(list.get(ACCRUAL_REPORT_TYPE_FIELD_INDEX));
             dto.setCargoSpaceCount(list.get(ACCRUAL_REPORT_CARGO_SPACE_COUNT_FIELD_INDEX));
+            result.add(dto);
+        }
+        return result;
+    }
+
+    private List<CostPriceDto> buildCostPriceDto(List<List<String>> excelList) {
+        List<CostPriceDto> result = new ArrayList<>();
+        for (List<String> list : excelList) {
+            CostPriceDto dto = new CostPriceDto();
+            dto.setArticle(list.get(0));
+            dto.setCostPrice(list.get(1).replace(" ", "").replace(",", "."));
+
             result.add(dto);
         }
         return result;
