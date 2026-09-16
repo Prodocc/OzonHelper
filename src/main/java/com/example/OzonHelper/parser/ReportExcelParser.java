@@ -20,7 +20,11 @@ import java.util.List;
 
 @Component
 public class ReportExcelParser {
-    public List<List<String>> readCSV(Path path) throws IOException, CsvValidationException {
+    public List<List<String>> readCostPriceCsv(Path path, int headerRow) throws CsvValidationException, IOException {
+        return readCSV(path, 1);
+    }
+
+    public List<List<String>> readCSV(Path path, int headerRowIndex) throws IOException, CsvValidationException {
         List<List<String>> result = new ArrayList<>();
 
         try (InputStream input = Files.newInputStream(path);
@@ -28,11 +32,11 @@ public class ReportExcelParser {
 
             Sheet sheet = workbook.getSheetAt(0);
 
-            Row headerRow = sheet.getRow(2);
+            Row headerRow = sheet.getRow(headerRowIndex);
             int columnCount = headerRow.getLastCellNum();
             DataFormatter formatter = new DataFormatter();
 
-            for (int rowIndex = 2; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            for (int rowIndex = headerRowIndex; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
 
                 if (row == null) {

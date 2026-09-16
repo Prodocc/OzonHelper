@@ -4,6 +4,7 @@ import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.StockItem;
+import com.example.OzonHelper.domain.mapper.CostPriceMapper;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
@@ -47,6 +48,7 @@ public class ReportServiceTest {
     private CrossDockDataBuilder crossDockDataBuilder;
     private CrossDockSupplyBuilder crossDockSupplyBuilder;
     private SupplyOrderLoader supplyOrderLoader;
+    private CostPriceMapper costPriceMapper;
 
     @BeforeEach
     public void init() {
@@ -65,6 +67,8 @@ public class ReportServiceTest {
         crossDockDataBuilder = new CrossDockDataBuilder();
         crossDockSupplyBuilder = new CrossDockSupplyBuilder();
         supplyOrderLoader = new SupplyOrderLoader();
+        costPriceMapper = new CostPriceMapper();
+
         this.reportService = new ReportService(
                 clients,
                 properties,
@@ -72,6 +76,7 @@ public class ReportServiceTest {
                 sheetAnalyzer,
                 csvParser,
                 excelParser,
+                costPriceMapper,
                 dtoMapper,
                 accrualMapper,
                 compositionMapper,
@@ -97,7 +102,7 @@ public class ReportServiceTest {
                 List.of("104", "creationDate", "groupOfService", "Кросс-докинг", "article4", "sku4", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-400,00 ₽"),
                 List.of("104", "creationDate", "groupOfService", "Кросс-докинг", "article5", "sku5", "productName", "0", "sellerPrice", "orderProcessType", "platform", "Schema", "", "", "", "-400,00 ₽"));
 
-        when(excelParser.readCSV(any(Path.class))).thenReturn(excelList);
+        when(excelParser.readCSV(any(Path.class), anyInt())).thenReturn(excelList);
 
         List<String> completedSupplyOrderIds = List.of("101", "102", "105", "106");
         List<String> confirmationAwaitingSupplyOrderIds = List.of("103", "104");

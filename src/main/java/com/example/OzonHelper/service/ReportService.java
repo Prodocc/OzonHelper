@@ -4,6 +4,7 @@ import com.example.OzonHelper.client.GoogleClient;
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.*;
+import com.example.OzonHelper.domain.mapper.CostPriceMapper;
 import com.example.OzonHelper.domain.mapper.PostingAccrualMapper;
 import com.example.OzonHelper.domain.mapper.PostingDtoMapper;
 import com.example.OzonHelper.domain.mapper.SupplyOrderCompositionMapper;
@@ -33,6 +34,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -50,10 +52,14 @@ public class ReportService {
     private final String STOCKS_REPORT_SPREADSHEET_KEY = "stocks-report-table";
     private final String DAILY_REPORT_SHEET_NAME = "Продажи ежедневные";
     private final String WEEKLY_REPORT_SHEET_NAME = "Продажи еженедельные";
+    private final String STOCKS_REPORT_SHEET_NAME = "Сводная";
     private final int ACCRUAL_REPORT_SUPPLY_ID_FIELD_INDEX = 0;
     private final int ACCRUAL_REPORT_TYPE_FIELD_INDEX = 3;
     private final int ACCRUAL_REPORT_CARGO_SPACE_COUNT_FIELD_INDEX = 7;
     private final int ACCRUAL_REPORT_SUM_FIELD_INDEX = 15;
+    private final int COST_PRICE_ARTICLE_COLUMN_INDEX = 0;
+    private final int COST_PRICE_ALIASES_COLUMN_INDEX = 1;
+    private final int COST_PRICE_COLUMN_INDEX = 2;
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
@@ -62,6 +68,7 @@ public class ReportService {
     private final ReportCSVParser csvParser;
     private final ReportExcelParser excelParser;
     private final PostingDtoMapper postingDtoMapper;
+    private final CostPriceMapper costPriceMapper;
     private final SupplyOrderCompositionMapper compositionMapper;
     private final PostingAccrualMapper postingAccrualMapper;
     private final CrossDockDataBuilder crossDockDataBuilder;
@@ -71,7 +78,7 @@ public class ReportService {
 
     public ReportService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties,
                          GoogleClient googleClient, SheetAnalyzer sheetAnalyzer,
-                         ReportCSVParser csvParser, ReportExcelParser excelParser,
+                         ReportCSVParser csvParser, ReportExcelParser excelParser, CostPriceMapper costPriceMapper,
                          PostingDtoMapper postingDtoMapper, PostingAccrualMapper postingAccrualMapper, SupplyOrderCompositionMapper compositionMapper,
                          CrossDockDataBuilder crossDockDataBuilder, CrossDockSupplyBuilder crossDockSupplyBuilder, SupplyOrderLoader supplyOrderLoader) {
         this.clients = clients;
@@ -82,6 +89,7 @@ public class ReportService {
         this.excelParser = excelParser;
         this.postingDtoMapper = postingDtoMapper;
         this.postingAccrualMapper = postingAccrualMapper;
+        this.costPriceMapper = costPriceMapper;
         this.compositionMapper = compositionMapper;
         this.crossDockDataBuilder = crossDockDataBuilder;
         this.crossDockSupplyBuilder = crossDockSupplyBuilder;
@@ -89,25 +97,83 @@ public class ReportService {
     }
 
     public void processStocksReport(Path costPriceTable) throws CsvValidationException, IOException {
-        List<List<String>> costPriceList = excelParser.readCSV(costPriceTable);
+        List<List<String>> costPriceList = excelParser.readCostPriceCsv(costPriceTable, 1);
 
         List<CostPriceDto> costPriceDtos = buildCostPriceDto(costPriceList);
         costPriceDtos.forEach(System.out::println);
 
-        Map<String, BigDecimal> costPriceMap = costPriceDtos
+        List<CostPrice> costPrices = costPriceDtos
                 .stream()
-                .collect(Collectors.toMap(
-                        CostPriceDto::getArticle,
-                        new Function<CostPriceDto, BigDecimal>() {
-                            @Override
-                            public BigDecimal apply(CostPriceDto dto) {
-                                System.out.println(dto.getCostPrice());
-                                return new BigDecimal(dto.getCostPrice());
-                            }
-                        }
-                ));
+                .map(costPriceMapper::mapToModel)
+                .toList();
 
-        System.out.println(costPriceMap);
+        String spreadSheetId = sheetsProperties.getSheets().get(STOCKS_REPORT_SPREADSHEET_KEY);
+
+        Map<String, StoredCostPrice> storedCostPrices = readStoredCostPrices(spreadSheetId);
+
+        System.out.println("//storedCostPrices");
+
+        storedCostPrices.values().forEach(System.out::println);
+
+        List<CostPrice> costPriceToUpdate = findCostPriceToUpdate(costPrices, storedCostPrices);
+
+        System.out.println(costPriceToUpdate.size());
+
+        if (!costPriceToUpdate.isEmpty()) {
+            List<List<Object>> rowsToAdd = new ArrayList<>();
+            Map<Integer, List<Object>> rowsToUpdate = new HashMap<>();
+            for (CostPrice costPrice : costPrices) {
+                StoredCostPrice storedCostPrice = storedCostPrices.get(costPrice.article());
+                if (storedCostPrice == null) {
+                    rowsToAdd.add(buildCostPriceRow(costPrice));
+                } else {
+                    rowsToUpdate.put(storedCostPrice.rowNumber(), buildCostPriceRow(costPrice));
+                }
+            }
+        }
+
+        //create report sheet
+    }
+
+    private List<Object> buildCostPriceRow(CostPrice costPrice) {
+        return List.of(costPrice.article(), costPrice.aliases(), costPrice.costPrice());
+    }
+
+    private List<List<Object>> getStocksColumnHeadingData() {
+        return List.of(List.of("Номенклатура", "Псевдонимы", "Себестоимость"));
+    }
+
+    private List<CostPrice> findCostPriceToUpdate(List<CostPrice> costPrices, Map<String, StoredCostPrice> storedCostPrices) {
+        List<CostPrice> result = new ArrayList<>();
+
+        for (CostPrice costPrice : costPrices) {
+            StoredCostPrice storedCostPrice = storedCostPrices.get(costPrice.article());
+            if (storedCostPrice == null || !costPrice.costPrice().equals(storedCostPrice.costPrice())) {
+                result.add(costPrice);
+            }
+        }
+        return result;
+    }
+
+    private Map<String, StoredCostPrice> readStoredCostPrices(String spreadSheetId) throws IOException {
+        List<List<Object>> table = googleClient.readTable(spreadSheetId, "'" + STOCKS_REPORT_SHEET_NAME + "'");
+
+        Map<String, StoredCostPrice> result = new HashMap<>();
+
+        int rowNumber = 2;
+        for (List<Object> row : table.subList(1, table.size())) {
+            if (!row.isEmpty()) {
+                String article = row.get(COST_PRICE_ARTICLE_COLUMN_INDEX).toString();
+                String aliases = row.get(COST_PRICE_ALIASES_COLUMN_INDEX).toString();
+                BigDecimal costPrice = new BigDecimal(row.get(COST_PRICE_COLUMN_INDEX).toString());
+
+                StoredCostPrice storedCostPrice = new StoredCostPrice(article, aliases, costPrice, rowNumber);
+
+                result.put(article, storedCostPrice);
+            }
+        }
+
+        return result;
     }
 
     public void processCrossdockReport(String clientId, Path fullPath) throws CsvValidationException, IOException, InterruptedException {
@@ -115,7 +181,7 @@ public class ReportService {
         System.out.println("clientId = " + clientId);
         System.out.println("fullPath = " + fullPath);
 
-        List<List<String>> excelList = excelParser.readCSV(fullPath);
+        List<List<String>> excelList = excelParser.readCSV(fullPath, 2);
 
         List<PostingAccrualDto> accrualDtos = buildAccrualsDtos(excelList);
 

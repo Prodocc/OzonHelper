@@ -20,7 +20,7 @@ public class PostingAccrualMapper {
         return model;
     }
 
-    private BigDecimal parseMoney(String value) {
+    public static BigDecimal parseMoney(String value) {
         if (value == null || value.isBlank()) {
             return BigDecimal.ZERO;
         }
