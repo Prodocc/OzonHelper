@@ -12,7 +12,9 @@ import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
 import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
-import com.example.OzonHelper.dto.request.product.GetProductRequest;
+import com.example.OzonHelper.dto.request.product.GetProductInfoRequest;
+import com.example.OzonHelper.dto.request.product.GetProductsFilter;
+import com.example.OzonHelper.dto.request.product.GetProductsRequest;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsRequest;
 import com.example.OzonHelper.dto.response.PostingsReportCreateResponse;
@@ -28,8 +30,10 @@ import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
 import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
-import com.example.OzonHelper.dto.response.product.GetProductResponse;
+import com.example.OzonHelper.dto.response.product.GetProductInfoResponse;
+import com.example.OzonHelper.dto.response.product.GetProductsResponse;
 import com.example.OzonHelper.dto.response.product.ProductDto;
+import com.example.OzonHelper.dto.response.product.ProductInfoDto;
 import com.example.OzonHelper.dto.response.questions.GetQuestionsResponse;
 import com.example.OzonHelper.dto.response.questions.QuestionPage;
 import com.example.OzonHelper.dto.response.report.AccrualDto;
@@ -78,16 +82,33 @@ public class OzonClient implements MarketplaceClient {
         this.shopName = config.getName();
     }
 
-    public List<ProductDto> getProducts(List<Long> skus) throws IOException, InterruptedException {
-        GetProductRequest request = new GetProductRequest();
-        request.setSkus(skus);
+    public List<ProductDto> getProducts() throws IOException, InterruptedException {
+        GetProductsRequest request = new GetProductsRequest();
+        GetProductsFilter filter = new GetProductsFilter();
+
+        request.setFilter(filter);
+        request.setLimit(1000);
 
         HttpResponse<String> response = createJsonBodyAndSendRequest(
                 OzonApiEndpoint.PRODUCT_LIST.getFullUrl(apiHost),
                 request
         );
 
-        return mapper.readValue(response.body(), GetProductResponse.class).getProducts();
+        System.out.println(response.body());
+
+        return mapper.readValue(response.body(), GetProductsResponse.class).getResult().getProducts();
+    }
+
+    public List<ProductInfoDto> getProductsInfoBySku(List<Long> skus) throws IOException, InterruptedException {
+        GetProductInfoRequest request = new GetProductInfoRequest();
+        request.setSkus(skus);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.PRODUCT_INFO_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetProductInfoResponse.class).getProducts();
     }
 
     @Override
@@ -311,7 +332,6 @@ public class OzonClient implements MarketplaceClient {
 
         return mapper.readValue(response.body(), GetStocksResponse.class).getStocks();
     }
-
 
     public String createPostingsReportCode(String from, String to, List<String> deliverySchemas) throws IOException, InterruptedException {
         PostingsReportCreateRequest request = new PostingsReportCreateRequest();

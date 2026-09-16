@@ -12,6 +12,8 @@ import com.example.OzonHelper.dto.report.ozon.CostPriceDto;
 import com.example.OzonHelper.dto.report.ozon.PostingAccrualDto;
 import com.example.OzonHelper.dto.response.PostingsReportInfoResult;
 import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.dto.response.product.ProductDto;
+import com.example.OzonHelper.dto.response.product.ProductInfoDto;
 import com.example.OzonHelper.enums.ozon.AccrualType;
 import com.example.OzonHelper.enums.ozon.ClusterType;
 import com.example.OzonHelper.enums.ozon.SupplyState;
@@ -23,17 +25,20 @@ import com.example.OzonHelper.service.report.crossdock.CrossDockSupplyBuilder;
 import com.example.OzonHelper.service.supply.SupplyOrderLoader;
 import com.example.OzonHelper.util.SheetAnalyzer;
 import com.google.api.services.sheets.v4.model.Sheet;
+import com.google.api.services.sheets.v4.model.ValueRange;
 import com.opencsv.exceptions.CsvException;
 import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Path;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -96,11 +101,21 @@ public class ReportService {
         this.supplyOrderLoader = supplyOrderLoader;
     }
 
-    public void processStocksReport(Path costPriceTable) throws CsvValidationException, IOException {
+    public void processStocksReport(Path costPriceTable) throws CsvValidationException, IOException, InterruptedException {
+//        List<CostPrice> costPrices = processPivotTable(costPriceTable);
+
+        OzonClient client = clients.get("1140235");
+
+        List<ProductDto> products = client.getProducts();
+        products.forEach(System.out::println);
+
+        //create report sheet
+    }
+
+    private List<CostPrice> processPivotTable(Path costPriceTable) throws IOException, CsvValidationException {
         List<List<String>> costPriceList = excelParser.readCostPriceCsv(costPriceTable, 1);
 
         List<CostPriceDto> costPriceDtos = buildCostPriceDto(costPriceList);
-        costPriceDtos.forEach(System.out::println);
 
         List<CostPrice> costPrices = costPriceDtos
                 .stream()
@@ -113,16 +128,14 @@ public class ReportService {
 
         System.out.println("//storedCostPrices");
 
-        storedCostPrices.values().forEach(System.out::println);
-
         List<CostPrice> costPriceToUpdate = findCostPriceToUpdate(costPrices, storedCostPrices);
 
-        System.out.println(costPriceToUpdate.size());
+        System.out.println("costPriceToUpdate.size() = " + costPriceToUpdate.size());
 
         if (!costPriceToUpdate.isEmpty()) {
             List<List<Object>> rowsToAdd = new ArrayList<>();
             Map<Integer, List<Object>> rowsToUpdate = new HashMap<>();
-            for (CostPrice costPrice : costPrices) {
+            for (CostPrice costPrice : costPriceToUpdate) {
                 StoredCostPrice storedCostPrice = storedCostPrices.get(costPrice.article());
                 if (storedCostPrice == null) {
                     rowsToAdd.add(buildCostPriceRow(costPrice));
@@ -130,9 +143,36 @@ public class ReportService {
                     rowsToUpdate.put(storedCostPrice.rowNumber(), buildCostPriceRow(costPrice));
                 }
             }
-        }
 
-        //create report sheet
+            //update pivot table
+            System.out.println(rowsToUpdate.size());
+            System.out.println(rowsToAdd.size());
+//            updateRows(spreadSheetId, rowsToUpdate);
+            addRows(spreadSheetId, rowsToAdd);
+        }
+        return costPrices;
+    }
+
+    private void addRows(String spreadSheetId, List<List<Object>> rowsToAdd) throws IOException {
+        if (rowsToAdd.isEmpty()) return;
+
+        List<List<Object>> table = googleClient.readTable(spreadSheetId,
+                STOCKS_REPORT_SHEET_NAME + "!A:C");
+        int nextEmptyRowNumber = sheetAnalyzer.findNextEmptyRowNumber(table);
+        String range = buildStocksRange(STOCKS_REPORT_SHEET_NAME, nextEmptyRowNumber, rowsToAdd.size());
+        googleClient.writeTable(rowsToAdd, spreadSheetId, range);
+    }
+
+    private String buildStocksRange(String title, int startRow, int dataSize) {
+        int endRow = startRow + dataSize - 1;
+        return "'" + title + "'" + "!A" + startRow + ":C" + endRow;
+    }
+
+    private void updateRows(String spreadSheetId, Map<Integer, List<Object>> rowsToUpadate) throws IOException {
+        if (rowsToUpadate.isEmpty()) return;
+
+        List<ValueRange> valueRanges = googleClient.buildCostPricesDataRanges(STOCKS_REPORT_SHEET_NAME, rowsToUpadate);
+        googleClient.writeDataRanges(spreadSheetId, valueRanges);
     }
 
     private List<Object> buildCostPriceRow(CostPrice costPrice) {
@@ -148,7 +188,7 @@ public class ReportService {
 
         for (CostPrice costPrice : costPrices) {
             StoredCostPrice storedCostPrice = storedCostPrices.get(costPrice.article());
-            if (storedCostPrice == null || !costPrice.costPrice().equals(storedCostPrice.costPrice())) {
+            if (storedCostPrice == null || !costPrice.costPrice().equals(storedCostPrice.costPrice().setScale(2))) {
                 result.add(costPrice);
             }
         }
@@ -165,9 +205,9 @@ public class ReportService {
             if (!row.isEmpty()) {
                 String article = row.get(COST_PRICE_ARTICLE_COLUMN_INDEX).toString();
                 String aliases = row.get(COST_PRICE_ALIASES_COLUMN_INDEX).toString();
-                BigDecimal costPrice = new BigDecimal(row.get(COST_PRICE_COLUMN_INDEX).toString());
+                BigDecimal costPrice = PostingAccrualMapper.parseMoney(row.get(COST_PRICE_COLUMN_INDEX).toString());
 
-                StoredCostPrice storedCostPrice = new StoredCostPrice(article, aliases, costPrice, rowNumber);
+                StoredCostPrice storedCostPrice = new StoredCostPrice(article, aliases, costPrice, rowNumber++);
 
                 result.put(article, storedCostPrice);
             }

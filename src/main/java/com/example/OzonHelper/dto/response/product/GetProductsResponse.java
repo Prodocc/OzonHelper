@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class ProductDto {
-    @JsonProperty("SKU")
-    private long sku;
+public class GetProductsResponse{
+    @JsonProperty("result")
+    private GetProductsResult result;
 }

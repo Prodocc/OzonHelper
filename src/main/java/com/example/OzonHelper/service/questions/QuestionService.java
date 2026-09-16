@@ -9,7 +9,7 @@ import com.example.OzonHelper.domain.StoredQuestion;
 import com.example.OzonHelper.domain.mapper.AnswerMapper;
 import com.example.OzonHelper.domain.mapper.QuestionMapper;
 import com.example.OzonHelper.dto.response.answers.AnswerDto;
-import com.example.OzonHelper.dto.response.product.ProductDto;
+import com.example.OzonHelper.dto.response.product.ProductInfoDto;
 import com.example.OzonHelper.dto.response.questions.QuestionDto;
 import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
 import com.example.OzonHelper.enums.ozon.QuestionStatus;
@@ -98,15 +98,15 @@ public class QuestionService {
 
             if (questionsToUpdate.isEmpty()) continue;
 
-            List<ProductDto> productsDtos = client.getProducts(questionsToUpdate.stream()
+            List<ProductInfoDto> productsDtos = client.getProductsInfoBySku(questionsToUpdate.stream()
                     .map(Question::getSku)
                     .distinct()
                     .toList());
 
             Map<Long, String> articleBySku = productsDtos.stream()
                     .collect(Collectors.toMap(
-                            ProductDto::getSku,
-                            ProductDto::getArticle
+                            ProductInfoDto::getSku,
+                            ProductInfoDto::getArticle
                     ));
 
             ExecutorService executor = Executors.newFixedThreadPool(5);

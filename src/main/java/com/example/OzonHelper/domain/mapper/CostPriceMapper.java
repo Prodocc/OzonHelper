@@ -12,6 +12,6 @@ public class CostPriceMapper {
         String article = dto.getArticle();
         BigDecimal costPrice = PostingAccrualMapper.parseMoney(dto.getCostPrice());
 
-        return new CostPrice(article, costPrice);
+        return new CostPrice(article, "", costPrice);
     }
 }

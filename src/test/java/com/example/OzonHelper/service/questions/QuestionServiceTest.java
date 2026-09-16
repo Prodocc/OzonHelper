@@ -6,7 +6,7 @@ import com.example.OzonHelper.config.GoogleSheetsProperties;
 import com.example.OzonHelper.domain.mapper.AnswerMapper;
 import com.example.OzonHelper.domain.mapper.QuestionMapper;
 import com.example.OzonHelper.dto.response.answers.AnswerDto;
-import com.example.OzonHelper.dto.response.product.ProductDto;
+import com.example.OzonHelper.dto.response.product.ProductInfoDto;
 import com.example.OzonHelper.dto.response.questions.QuestionDto;
 import com.example.OzonHelper.dto.response.questions.QuestionPage;
 import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
@@ -86,9 +86,9 @@ public class QuestionServiceTest {
 
         when(googleClient.readTable(anyString(), eq("'" + "shopName" + "'"))).thenReturn(List.of());
 
-        List<ProductDto> productDtos = generateProductDtos(0, 7);
+        List<ProductInfoDto> productDtos = generateProductDtos(0, 7);
 
-        when(client.getProducts(anyList())).thenReturn(productDtos);
+        when(client.getProductsInfoBySku(anyList())).thenReturn(productDtos);
 
         List<AnswerDto> answerDtos = generateAnswerDtos(0, 7);
 
@@ -159,9 +159,9 @@ public class QuestionServiceTest {
 
         when(googleClient.readTable(any(), eq("'" + "shopName" + "'"))).thenReturn(storedQuestions);
 
-        List<ProductDto> productDtos = generateProductDtos(0, 7);
+        List<ProductInfoDto> productDtos = generateProductDtos(0, 7);
 
-        when(client.getProducts(anyList())).thenReturn(productDtos);
+        when(client.getProductsInfoBySku(anyList())).thenReturn(productDtos);
 
         List<AnswerDto> answerDtos = generateAnswerDtos(0, 7);
 
@@ -233,9 +233,9 @@ public class QuestionServiceTest {
 
         when(googleClient.createSheet(eq(spreadSheetId), eq(shopName))).thenReturn(123);
 
-        List<ProductDto> productDtos = generateProductDtos(0, 7);
+        List<ProductInfoDto> productDtos = generateProductDtos(0, 7);
 
-        when(client.getProducts(anyList())).thenReturn(productDtos);
+        when(client.getProductsInfoBySku(anyList())).thenReturn(productDtos);
 
         List<AnswerDto> answerDtos = generateAnswerDtos(0, 7);
 
@@ -310,11 +310,11 @@ public class QuestionServiceTest {
         return result;
     }
 
-    private List<ProductDto> generateProductDtos(int startValue, int amount) {
-        List<ProductDto> result = new ArrayList<>();
+    private List<ProductInfoDto> generateProductDtos(int startValue, int amount) {
+        List<ProductInfoDto> result = new ArrayList<>();
 
         for (int i = startValue; i < amount; i++) {
-            ProductDto dto = new ProductDto();
+            ProductInfoDto dto = new ProductInfoDto();
             dto.setSku(i);
             dto.setArticle("article" + i);
 

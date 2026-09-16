@@ -241,6 +241,20 @@ public class GoogleClient {
         return dataRanges;
     }
 
+    public List<ValueRange> buildCostPricesDataRanges(String title, Map<Integer, List<Object>> rowsToUpdate) {
+        List<ValueRange> dataRanges = new ArrayList<>();
+        for (Integer rowNumber : rowsToUpdate.keySet()) {
+            String range = title + "!A" + rowNumber + ":C" + rowNumber;
+
+            ValueRange valueRange = new ValueRange()
+                    .setRange(range)
+                    .setValues(Collections.singletonList(rowsToUpdate.get(rowNumber)));
+
+            dataRanges.add(valueRange);
+        }
+        return dataRanges;
+    }
+
     private List<ValueRange> buildDataRanges(List<StockItem> items, Map<String, Integer> skuToRowMap,
                                              SheetColumnRange sheetColumnRange,
                                              Function<StockItem, List<Object>> valuesMapper) {

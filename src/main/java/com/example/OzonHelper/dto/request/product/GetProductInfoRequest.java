@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class GetProductRequest {
+public class GetProductInfoRequest {
     @JsonProperty("sku")
     private List<Long> skus;
 }
