@@ -13,10 +13,10 @@ public class PostingDtoMapper {
     public PostingDto mapToModel(List<String> posting) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-        int POSTINGS_SKU_INDEX = 10;
-        int POSTINGS_ARTICLE_INDEX = 11;
+        int POSTINGS_SKU_INDEX = 11;
+        int POSTINGS_ARTICLE_INDEX = 12;
         int POSTINGS_ACCEPT_DATE_INDEX = 2;
-        int POSTINGS_SELLS_INDEX = 18;
+        int POSTINGS_SELLS_INDEX = 19;
 
         PostingDto dto = new PostingDto();
         dto.setSku(posting.get(POSTINGS_SKU_INDEX));

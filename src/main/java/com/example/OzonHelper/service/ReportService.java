@@ -50,7 +50,7 @@ public class ReportService {
     private final int ACCRUAL_REPORT_TYPE_FIELD_INDEX = 3;
     private final int ACCRUAL_REPORT_CARGO_SPACE_COUNT_FIELD_INDEX = 7;
     private final int ACCRUAL_REPORT_SUM_FIELD_INDEX = 15;
-    private final int POSTINGS_NORMALIZED_COLUMNS_SIZE = 27;
+    private final int POSTINGS_NORMALIZED_COLUMNS_SIZE = 28;
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
@@ -323,6 +323,8 @@ public class ReportService {
                 continue;
             }
             try {
+
+                System.out.println("client.getShopName() = " + client.getShopName());
                 List<PostingDto> postingsForLastThreeWeeks = loadPostingDtos(from, to, deliverySchemas, client);
 
                 List<PostingDto> postingsForLastWeek = filterPostingsForPeriod(postingsForLastThreeWeeks, startOfTheLastWeek, startOfToday);
@@ -534,6 +536,7 @@ public class ReportService {
                 posting.remove(indexToRemove);
             }
         }
+
         return postings;
     }
 
