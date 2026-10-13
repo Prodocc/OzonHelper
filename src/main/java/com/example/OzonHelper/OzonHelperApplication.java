@@ -4,6 +4,7 @@ import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.dto.response.returns.ReturnDto;
 import com.example.OzonHelper.dto.response.returns.ReturnEntityDto;
 import com.example.OzonHelper.service.CrossdockReportWatcher;
+import com.example.OzonHelper.service.OzonAgentService;
 import com.example.OzonHelper.service.ReportService;
 import com.example.OzonHelper.service.ReturnService;
 import org.springframework.boot.SpringApplication;
@@ -22,11 +23,14 @@ public class OzonHelperApplication {
 
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
-        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
-        OzonClient client = ozonClients.get("1140235");
+        OzonAgentService agent = run.getBean("ozonAgentService", OzonAgentService.class);
+        System.out.println(agent.ask("Какая подписка у магазина ecolife, выведи только тип подписки"));
 
-        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
-        System.out.println(returnByBarcode);
+//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+//        OzonClient client = ozonClients.get("1140235");
+//
+//        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
+//        System.out.println(returnByBarcode);
 
 //
 //        ReturnService returnService = run.getBean("returnService", ReturnService.class);
