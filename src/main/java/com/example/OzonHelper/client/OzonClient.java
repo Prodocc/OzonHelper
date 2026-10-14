@@ -486,8 +486,6 @@ public class OzonClient implements MarketplaceClient {
                 request
         );
 
-        System.out.println(response.body());
-
         return mapper.readValue(response.body(), GetReturnListResponse.class).getReturns();
     }
 

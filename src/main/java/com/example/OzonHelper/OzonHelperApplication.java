@@ -25,9 +25,9 @@ public class OzonHelperApplication {
 
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
-        FbsService fbsService = run.getBean("fbsService", FbsService.class);
-        List<String> shopNamesWithAwaitingPackaging = fbsService.getShopNamesWithAwaitingPackaging();
-        System.out.println(shopNamesWithAwaitingPackaging);
+        ReturnService returnService = run.getBean("returnService", ReturnService.class);
+        List<String> shopNamesWithReturns = returnService.getShopNamesWithReturns();
+        System.out.println(shopNamesWithReturns);
 
 //        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
 //        System.out.println(returnByBarcode);
