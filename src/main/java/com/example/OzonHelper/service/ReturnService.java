@@ -89,6 +89,75 @@ public class ReturnService {
         }
     }
 
+    private List<String> getShopNamesWithReturns(String schema){
+        List<String> result = new ArrayList<>();
+
+        for (OzonClient client : clients.values()) {
+            try {
+                List<ReturnDto> returns = client.getReturnsByStatus("", ReturnVisualStatus.ARRIVED_AT_RETURN_PLACE);
+                if (!returns.isEmpty()) result.add(client.getShopName());
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to check FBS returns for shop: " + client.getShopName(),
+                        e
+                );
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(
+                        "Interrupted while loading FBS returns for shop: " + client.getShopName(),
+                        e
+                );
+            }
+        }
+        return result;
+    }
+
+    public List<String> getShopNamesWithFbsReturns(String schema) {
+        List<String> result = new ArrayList<>();
+
+        for (OzonClient client : clients.values()) {
+            try {
+                List<ReturnDto> returns = client.getReturnsByStatus(schema, ReturnVisualStatus.ARRIVED_AT_RETURN_PLACE);
+                if (!returns.isEmpty()) result.add(client.getShopName());
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to check FBS returns for shop: " + client.getShopName(),
+                        e
+                );
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(
+                        "Interrupted while loading FBS returns for shop: " + client.getShopName(),
+                        e
+                );
+            }
+        }
+        return result;
+    }
+
+    public List<String> getShopNamesWithFboReturns() {
+        List<String> result = new ArrayList<>();
+
+        for (OzonClient client : clients.values()) {
+            try {
+                List<ReturnDto> returns = client.getReturnsByStatus("FBO", ReturnVisualStatus.ARRIVED_AT_RETURN_PLACE);
+                if (!returns.isEmpty()) result.add(client.getShopName());
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to check FBO returns for shop: " + client.getShopName(),
+                        e
+                );
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(
+                        "Interrupted while loading FBO returns for shop: " + client.getShopName(),
+                        e
+                );
+            }
+        }
+        return result;
+    }
+
     public void sendReturnBarcodeNotifications(String chatId) {
         Map<String, List<Return>> returnsByLegalEntity = new HashMap<>();
         Map<String, OzonClient> clientsByLegalEntity = new HashMap<>();
