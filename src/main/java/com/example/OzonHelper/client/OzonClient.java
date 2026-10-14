@@ -187,7 +187,7 @@ public class OzonClient implements MarketplaceClient {
         return new SupplyOrderCompositionDto(getSupplyOrdersContentResponse.getItems(), getSupplyOrdersContentResponse.getTotalCount());
     }
 
-    public List<PostingDto> getFbsPostingList(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
+    public List<PostingDto> getFbsPosting(LocalDateTime since, LocalDateTime to, PostingStatus status) throws IOException, InterruptedException {
         GetFbsPostingListRequest request = new GetFbsPostingListRequest();
         GetFbsPostingListFilter filter = new GetFbsPostingListFilter();
 
@@ -206,8 +206,8 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetFbsPostingListResponse.class).getResult().getPostings();
     }
 
-    public boolean fbsHasPostings(LocalDateTime since, LocalDateTime to, String status) throws IOException, InterruptedException {
-        return getFbsPostingList(since, to, status).size() > 1;
+    public boolean fbsHasPostings(LocalDateTime since, LocalDateTime to, PostingStatus status) throws IOException, InterruptedException {
+        return !getFbsPosting(since, to, status).isEmpty();
     }
 
     public List<ClusterDto> getClusters(ClusterType type) throws IOException, InterruptedException {
@@ -486,8 +486,6 @@ public class OzonClient implements MarketplaceClient {
                 request
         );
 
-        System.out.println(response.body());
-
         return mapper.readValue(response.body(), GetReturnListResponse.class).getReturns();
     }
 
@@ -519,6 +517,5 @@ public class OzonClient implements MarketplaceClient {
 
         return mapper.readValue(response.body(), GetReturnBarcodePNGResponse.class).getPng();
     }
-
 
 }

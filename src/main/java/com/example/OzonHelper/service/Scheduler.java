@@ -12,7 +12,7 @@ import java.util.List;
 public class Scheduler {
 
     private final List<OzonClient> clients;
-    private final FbsLogService fbsLogService;
+    private final FbsService fbsService;
     private final ReportService reportService;
 
 //    @Scheduled(cron = "0 0 9 * * 1-5")
@@ -24,7 +24,7 @@ public class Scheduler {
 //            since = since.minusDays(1).withHour(15).withMinute(0).withSecond(0).withNano(0);
 //        }
 //        if (processFBSLog(since)) {
-//            fbsLogService.syncLogList();
+//            fbsService.syncLogList();
 //        }
 //    }
 
@@ -50,14 +50,14 @@ public class Scheduler {
 //    @Scheduled(cron = "0 0 14 * * 0-5")
 //    public void fillFBSLogListMidday() throws IOException, InterruptedException {
 //        if (processFBSLog(LocalDateTime.now().minusHours(5).withMinute(0).withSecond(0).withNano(0))) {
-//            fbsLogService.syncLogList();
+//            fbsService.syncLogList();
 //        }
 //    }
 //
 //    @Scheduled(cron = "0 0 15 * * 0-5")
 //    public void fillFBSLogListAfternoon() throws IOException, InterruptedException {
 //        if (processFBSLog(LocalDateTime.now().minusHours(1).withMinute(0).withSecond(0).withNano(0))) {
-//            fbsLogService.syncLogList();
+//            fbsService.syncLogList();
 //        }
 //    }
 //

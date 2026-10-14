@@ -89,6 +89,32 @@ public class ReturnService {
         }
     }
 
+    public List<String> getShopNamesWithReturns() {
+        List<String> result = new ArrayList<>();
+
+        for (OzonClient client : clients.values()) {
+            try {
+                List<ReturnDto> fbsReturns = client.getReturnsByStatus(SCHEMA_FBS, ReturnVisualStatus.ARRIVED_AT_RETURN_PLACE);
+                if (!fbsReturns.isEmpty()) result.add(client.getShopName());
+                List<ReturnDto> fboReturns = client.getReturnsByStatus(SCHEMA_FBO, ReturnVisualStatus.ARRIVED_AT_RETURN_PLACE);
+                if (!fboReturns.isEmpty()) result.add(client.getShopName());
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to check returns for shop: " + client.getShopName(),
+                        e
+                );
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(
+                        "Interrupted while loading returns for shop: " + client.getShopName(),
+                        e
+                );
+            }
+        }
+
+        return result.stream().distinct().toList();
+    }
+
     public void sendReturnBarcodeNotifications(String chatId) {
         Map<String, List<Return>> returnsByLegalEntity = new HashMap<>();
         Map<String, OzonClient> clientsByLegalEntity = new HashMap<>();
