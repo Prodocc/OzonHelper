@@ -49,32 +49,32 @@ public class AppConfiguration {
         return mapper;
     }
 
-    @Bean
-    public SSLContext maxSslContext() throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
-        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-        try (InputStream inputStream = Files.newInputStream(
-                Path.of("config/max-truststore.p12")
-        )) {
-            keyStore.load(inputStream, "changeit".toCharArray());
-        } catch (IOException | CertificateException | NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-
-        TrustManagerFactory trustManagerFactory =
-                TrustManagerFactory.getInstance(
-                        TrustManagerFactory.getDefaultAlgorithm()
-                );
-
-        trustManagerFactory.init(keyStore);
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(
-                null,
-                trustManagerFactory.getTrustManagers(),
-                null
-        );
-        return sslContext;
-    }
+//    @Bean
+//    public SSLContext maxSslContext() throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
+//        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+//        try (InputStream inputStream = Files.newInputStream(
+//                Path.of("config/max-truststore.p12")
+//        )) {
+//            keyStore.load(inputStream, "changeit".toCharArray());
+//        } catch (IOException | CertificateException | NoSuchAlgorithmException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//        TrustManagerFactory trustManagerFactory =
+//                TrustManagerFactory.getInstance(
+//                        TrustManagerFactory.getDefaultAlgorithm()
+//                );
+//
+//        trustManagerFactory.init(keyStore);
+//
+//        SSLContext sslContext = SSLContext.getInstance("TLS");
+//        sslContext.init(
+//                null,
+//                trustManagerFactory.getTrustManagers(),
+//                null
+//        );
+//        return sslContext;
+//    }
 
     @Bean
     @Qualifier("defaultHttpClient")
@@ -84,32 +84,32 @@ public class AppConfiguration {
                 .build();
     }
 
-    @Bean
-    @Qualifier("maxHttpClient")
-    public HttpClient maxHttpClient(SSLContext maxSslContext) {
-        return HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_1_1)
-                .sslContext(maxSslContext)
-                .build();
-    }
-
-    @Bean
-    public MaxClient maxClient(MaxBotConfig maxBotConfig, @Value("${max.api.host}") String maxApiHost,
-                               @Qualifier("maxHttpClient") HttpClient httpClient, RestClient restClient, ObjectMapper mapper) {
-        return new MaxClient(maxBotConfig, maxApiHost, httpClient, restClient, mapper);
-    }
-
-    @Bean
-    @Qualifier("maxRestClient")
-    public RestClient maxRestClient(
-            @Qualifier("maxHttpClient") HttpClient maxHttpClient) {
-        JdkClientHttpRequestFactory requestFactory
-                = new JdkClientHttpRequestFactory(maxHttpClient);
-
-        return RestClient.builder()
-                .requestFactory(requestFactory)
-                .build();
-    }
+//    @Bean
+//    @Qualifier("maxHttpClient")
+//    public HttpClient maxHttpClient(SSLContext maxSslContext) {
+//        return HttpClient.newBuilder()
+//                .version(HttpClient.Version.HTTP_1_1)
+//                .sslContext(maxSslContext)
+//                .build();
+//    }
+//
+//    @Bean
+//    public MaxClient maxClient(MaxBotConfig maxBotConfig, @Value("${max.api.host}") String maxApiHost,
+//                               @Qualifier("maxHttpClient") HttpClient httpClient, RestClient restClient, ObjectMapper mapper) {
+//        return new MaxClient(maxBotConfig, maxApiHost, httpClient, restClient, mapper);
+//    }
+//
+//    @Bean
+//    @Qualifier("maxRestClient")
+//    public RestClient maxRestClient(
+//            @Qualifier("maxHttpClient") HttpClient maxHttpClient) {
+//        JdkClientHttpRequestFactory requestFactory
+//                = new JdkClientHttpRequestFactory(maxHttpClient);
+//
+//        return RestClient.builder()
+//                .requestFactory(requestFactory)
+//                .build();
+//    }
 
     @Bean
     public Map<String, OzonClient> ozonClients(StoreProperties storeProperties, @Value("${ozon.api.host}") String ozonApiHost,

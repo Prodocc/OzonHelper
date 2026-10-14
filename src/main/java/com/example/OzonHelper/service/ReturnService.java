@@ -35,17 +35,17 @@ public class ReturnService {
 
     private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
-    private final MaxClient maxClient;
+//    private final MaxClient maxClient;
     private final GoogleClient googleClient;
     private final SheetAnalyzer sheetAnalyzer;
     private final ReturnMapper returnMapper;
 
     public ReturnService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties,
-                         GoogleClient googleClient, MaxClient maxClient, SheetAnalyzer sheetAnalyzer, ReturnMapper returnMapper) {
+                         GoogleClient googleClient, /*MaxClient maxClient,*/ SheetAnalyzer sheetAnalyzer, ReturnMapper returnMapper) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
-        this.maxClient = maxClient;
+//        this.maxClient = maxClient;
         this.sheetAnalyzer = sheetAnalyzer;
         this.returnMapper = returnMapper;
     }
@@ -158,23 +158,23 @@ public class ReturnService {
 
         System.out.println(barcodePngsByLegalEntity);
 
-        for (String legalEntity : barcodePngsByLegalEntity.keySet()) {
-            try {
-                StringBuilder sb = new StringBuilder();
-                for (Return shopReturn : returnsByLegalEntity.get(legalEntity)) {
-                    sb.append(shopReturn.getProduct().getQuantity());
-                    sb.append(" - ");
-                    sb.append(shopReturn.getProduct().getArticle());
-                    sb.append("\n");
-                }
-                sb.append(returnsByLegalEntity.get(legalEntity).get(0).getWarehouse().getAddress());
-                sb.append("\n");
-                sb.append(legalEntity);
-
-                maxClient.sendImage(chatId, sb.toString(), barcodePngsByLegalEntity.get(legalEntity));
-            } catch (IOException | InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
+//        for (String legalEntity : barcodePngsByLegalEntity.keySet()) {
+//            try {
+//                StringBuilder sb = new StringBuilder();
+//                for (Return shopReturn : returnsByLegalEntity.get(legalEntity)) {
+//                    sb.append(shopReturn.getProduct().getQuantity());
+//                    sb.append(" - ");
+//                    sb.append(shopReturn.getProduct().getArticle());
+//                    sb.append("\n");
+//                }
+//                sb.append(returnsByLegalEntity.get(legalEntity).get(0).getWarehouse().getAddress());
+//                sb.append("\n");
+//                sb.append(legalEntity);
+//
+//                maxClient.sendImage(chatId, sb.toString(), barcodePngsByLegalEntity.get(legalEntity));
+//            } catch (IOException | InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
     }
 }
