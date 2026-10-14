@@ -268,6 +268,7 @@ public class ReportServiceTest {
         return result;
     }
 
+    //TEST fails - check why?
     @Test
     public void updateDailyReport() throws Exception {
         List<List<Object>> rawData = List.of(

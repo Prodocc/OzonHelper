@@ -1,9 +1,11 @@
 package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
+import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.response.returns.ReturnDto;
 import com.example.OzonHelper.dto.response.returns.ReturnEntityDto;
 import com.example.OzonHelper.service.CrossdockReportWatcher;
+import com.example.OzonHelper.service.FbsService;
 import com.example.OzonHelper.service.ReportService;
 import com.example.OzonHelper.service.ReturnService;
 import org.springframework.boot.SpringApplication;
@@ -12,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @SpringBootApplication
@@ -22,11 +25,12 @@ public class OzonHelperApplication {
 
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
-        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
-        OzonClient client = ozonClients.get("1140235");
+        FbsService fbsService = run.getBean("fbsService", FbsService.class);
+        List<String> shopNamesWithAwaitingPackaging = fbsService.getShopNamesWithAwaitingPackaging();
+        System.out.println(shopNamesWithAwaitingPackaging);
 
-        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
-        System.out.println(returnByBarcode);
+//        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
+//        System.out.println(returnByBarcode);
 
 //
 //        ReturnService returnService = run.getBean("returnService", ReturnService.class);

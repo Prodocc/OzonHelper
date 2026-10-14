@@ -1,5 +1,6 @@
 package com.example.OzonHelper.dto.request.fbs;
 
+import com.example.OzonHelper.enums.ozon.PostingStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -12,5 +13,5 @@ public class GetFbsPostingListFilter {
     @JsonProperty("to")
     private String to;
     @JsonProperty("status")
-    private String status;
+    private PostingStatus status;
 }

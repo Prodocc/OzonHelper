@@ -1,7 +1,10 @@
 package com.example.OzonHelper.service;
 
 import com.example.OzonHelper.client.GoogleClient;
+import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.config.GoogleSheetsProperties;
+import com.example.OzonHelper.dto.response.fbs.PostingDto;
+import com.example.OzonHelper.enums.ozon.PostingStatus;
 import com.example.OzonHelper.enums.ozon.SheetColors;
 import com.example.OzonHelper.util.*;
 import com.google.api.services.sheets.v4.model.GridRange;
@@ -11,11 +14,14 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.function.BiConsumer;
 
 @Service
-public class FbsLogService {
+public class FbsService {
     private final String LOG_LIST_RANGE = "B1:J500";
     private final String FBS_LOG_LIST_SPREADSHEET_KEY = "fbs-log-id";
     private final String FBS_LOG_LIST_DATE_COLUMN = "B";
@@ -26,14 +32,16 @@ public class FbsLogService {
     private final int FBS_LOG_LIST_ROW_SIZE = 6;
     private final int FBS_ROWS_TO_ADD = 5;
 
+    private final Map<String, OzonClient> clients;
     private final GoogleSheetsProperties sheetsProperties;
     private final GoogleClient googleClient;
     private final FbsLogScopeCalculator scopeCalculator;
     private final FbsLogDataBuilder dataBuilder;
     private final DataNormalizer normalizer;
 
-    public FbsLogService(GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, FbsLogScopeCalculator scopeCalculator,
-                         FbsLogDataBuilder dataBuilder, DataNormalizer normalizer) {
+    public FbsService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, FbsLogScopeCalculator scopeCalculator,
+                      FbsLogDataBuilder dataBuilder, DataNormalizer normalizer) {
+        this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
         this.scopeCalculator = scopeCalculator;
@@ -116,6 +124,61 @@ public class FbsLogService {
             }
         }
         return sheetTitle;
+    }
+
+    //TODO create FBS orderException
+    //TODO add methods that will populate LogList with postings //rewrite syncLogList maybe
+    //TODO add method that will check all shop from fbs posting with status AWAITING_DELIVER, then form shipment and send to warehouse mail address
+    //TODO add method that will check all shop from fbs postings with status AWAITING_PACKAGING, then for each of these postings ->
+    //create order in 1C, and send it to the warehouse mail address with the posting barcode label
+    public List<String> getShopNamesWithAwaitingPackaging() {
+        List<String> result = new ArrayList<>();
+
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusDays(5);
+
+        for (OzonClient client : clients.values()) {
+            try {
+                List<PostingDto> postings = client.getFbsPosting(from, to, PostingStatus.AWAITING_PACKAGING);
+                if (!postings.isEmpty()) result.add(client.getShopName());
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to check FBS orders for shop: " + client.getShopName(),
+                        e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(
+                        "Interrupted while loading FBS postings for shop: " + client.getShopName(),
+                        e
+                );
+            }
+        }
+        return result;
+    }
+
+    public List<String> getShopNamesWithAwaitingDeliver() {
+        List<String> result = new ArrayList<>();
+
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusDays(5);
+
+        for (OzonClient client : clients.values()) {
+            try {
+                List<PostingDto> postings = client.getFbsPosting(from, to, PostingStatus.AWAITING_DELIVER);
+                if (!postings.isEmpty()) result.add(client.getShopName());
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to check FBS orders for shop: " + client.getShopName(),
+                        e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(
+                        "Interrupted while loading FBS postings for shop: " + client.getShopName(),
+                        e
+                );
+            }
+        }
+        return result;
     }
 
 }
