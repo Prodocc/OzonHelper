@@ -1,20 +1,11 @@
 package com.example.OzonHelper;
 
-import com.example.OzonHelper.client.OzonClient;
-import com.example.OzonHelper.dto.response.fbs.PostingDto;
-import com.example.OzonHelper.dto.response.returns.ReturnDto;
-import com.example.OzonHelper.dto.response.returns.ReturnEntityDto;
-import com.example.OzonHelper.service.CrossdockReportWatcher;
-import com.example.OzonHelper.service.FbsService;
-import com.example.OzonHelper.service.ReportService;
-import com.example.OzonHelper.service.ReturnService;
+import com.example.OzonHelper.service.*;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @SpringBootApplication
@@ -25,31 +16,8 @@ public class OzonHelperApplication {
 
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
-        ReturnService returnService = run.getBean("returnService", ReturnService.class);
-        List<String> shopNamesWithReturns = returnService.getShopNamesWithReturns();
-        System.out.println(shopNamesWithReturns);
-
-//        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
-//        System.out.println(returnByBarcode);
-
-//
-//        ReturnService returnService = run.getBean("returnService", ReturnService.class);
-//        Path path = Path.of("D:\\returns\\shopname\\029199977 от 24.08.2026.pdf");
-//        List<ReturnEntityDto> returnActEntities = returnService.getReturnActEntities(path);
-//
-//        returnActEntities.forEach(System.out::println);
-
-//        returnService.sendReturnBarcodeNotifications("414671305");
-//
-//        QuestionService questionService = run.getBean("questionService", QuestionService.class);
-//        questionService.syncQuestions();
-//
-//        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
-//        crossdockReportWatcher.watch();
-//
-//        ReportService reportService = run.getBean("reportService", ReportService.class);
-//        reportService.updateDailyReport(false);
-//        reportService.processCrossdockReport("123", Path.of("1"));
+        OzonAgentService ozonAgentService = run.getBean("ozonAgentService", OzonAgentService.class);
+        System.out.println(ozonAgentService.ask("Покажи магазины, где есть FBS-заказы"));
 
         System.exit(0);
     }

@@ -131,7 +131,7 @@ public class FbsService {
     //TODO add method that will check all shop from fbs posting with status AWAITING_DELIVER, then form shipment and send to warehouse mail address
     //TODO add method that will check all shop from fbs postings with status AWAITING_PACKAGING, then for each of these postings ->
     //create order in 1C, and send it to the warehouse mail address with the posting barcode label
-    public List<String> getShopNamesWithAwaitingPackaging() {
+    public List<String> getShopsWithAwaitingPackaging() {
         List<String> result = new ArrayList<>();
 
         LocalDateTime to = LocalDateTime.now();
@@ -156,7 +156,7 @@ public class FbsService {
         return result;
     }
 
-    public List<String> getShopNamesWithAwaitingDeliver() {
+    public List<String> getShopsWithAwaitingDeliver() {
         List<String> result = new ArrayList<>();
 
         LocalDateTime to = LocalDateTime.now();
