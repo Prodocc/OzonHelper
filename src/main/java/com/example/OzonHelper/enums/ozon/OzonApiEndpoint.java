@@ -25,7 +25,11 @@ public enum OzonApiEndpoint {
     RETURN_LIST("/v1/returns/list"),
     RETURN_NEW_BARCODE_GET_PNG("/v1/return/giveout/barcode-reset"),
     RETURN_BARCODE_GET_PNG("/v1/return/giveout/get-png"),
-    RETURN_GIVEOUT_GET_PDF("/v1/return/giveout/get-pdf");
+    RETURN_GIVEOUT_GET_PDF("/v1/return/giveout/get-pdf"),
+    CARRIAGES_LIST("/v2/carriage/delivery/list"),
+    CARRIAGE_CREATE("/v1/carriage/create"),
+    CARRIAGE_APPROVE("/v1/carriage/approve"),
+    CARRIAGE_GET_PDF("/v2/posting/fbs/act/get-pdf");
 
     private final String path;
 

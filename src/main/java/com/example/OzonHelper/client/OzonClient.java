@@ -11,9 +11,7 @@ import com.example.OzonHelper.dto.request.answers.GetAnswersRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatHistoryRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
-import com.example.OzonHelper.dto.request.fbs.GetFBSWarehousesRequest;
-import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListFilter;
-import com.example.OzonHelper.dto.request.fbs.GetFbsPostingListRequest;
+import com.example.OzonHelper.dto.request.fbs.*;
 import com.example.OzonHelper.dto.request.product.GetProductRequest;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsRequest;
@@ -29,12 +27,10 @@ import com.example.OzonHelper.dto.response.chat.ChatDto;
 import com.example.OzonHelper.dto.response.chat.GetChatHistoryResponse;
 import com.example.OzonHelper.dto.response.chat.GetChatListResponse;
 import com.example.OzonHelper.dto.response.chat.MessageDto;
-import com.example.OzonHelper.dto.response.fbs.FBSWarehouseDto;
-import com.example.OzonHelper.dto.response.fbs.GetFBSWarehousesResponse;
-import com.example.OzonHelper.dto.response.fbs.GetFbsPostingListResponse;
-import com.example.OzonHelper.dto.response.fbs.PostingDto;
+import com.example.OzonHelper.dto.response.fbs.*;
 import com.example.OzonHelper.dto.request.fbo.*;
 import com.example.OzonHelper.dto.response.fbo.*;
+import com.example.OzonHelper.dto.response.fbs.PostingDto;
 import com.example.OzonHelper.dto.response.product.GetProductResponse;
 import com.example.OzonHelper.dto.response.product.ProductDto;
 import com.example.OzonHelper.dto.response.questions.GetQuestionsResponse;
@@ -48,6 +44,7 @@ import com.example.OzonHelper.dto.response.seller.GetSellerInfoResponse;
 import com.example.OzonHelper.dto.response.seller.SubscriptionDto;
 import com.example.OzonHelper.enums.ozon.ReturnVisualStatus;
 import com.example.OzonHelper.enums.ozon.*;
+import com.example.OzonHelper.exceptions.OzonApiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 
@@ -62,6 +59,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 @Data
 public class OzonClient implements MarketplaceClient {
@@ -70,12 +68,15 @@ public class OzonClient implements MarketplaceClient {
     private static final int FBS_POSTING_MAX_LIMIT = 100;
     private static final int CHATS_LIST_LIMIT = 100;
     private static final int CHAT_HISTORY_LIMIT = 1000;
+    private static final int DELIVERY_METHODS_LIMIT = 1000;
     private final String clientId;
     private final String apiKey;
     private final String apiHost;
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
+    // maybe remove this 3 fields and place - the config instead to get field from it
     private final String shopName;
+    private final long fbsWarehouseId;
     private final String legalEntity;
 
 
@@ -86,19 +87,8 @@ public class OzonClient implements MarketplaceClient {
         this.clientId = config.getClientId();
         this.apiKey = config.getApiKey();
         this.shopName = config.getName();
+        this.fbsWarehouseId = config.getFbsWarehouseId();
         this.legalEntity = config.getLegalEntity();
-    }
-
-    public List<ProductDto> getProducts(List<Long> skus) throws IOException, InterruptedException {
-        GetProductRequest request = new GetProductRequest();
-        request.setSkus(skus);
-
-        HttpResponse<String> response = createJsonBodyAndSendRequest(
-                OzonApiEndpoint.PRODUCT_LIST.getFullUrl(apiHost),
-                request
-        );
-
-        return mapper.readValue(response.body(), GetProductResponse.class).getProducts();
     }
 
     @Override
@@ -121,6 +111,53 @@ public class OzonClient implements MarketplaceClient {
                 .build();
 
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<byte[]> sendRequestForBytes(
+            String url,
+            Object body
+    ) {
+        try {
+            String json = mapper.writeValueAsString(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Client-Id", clientId)
+                    .header("Api-Key", apiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            return httpClient.send(
+                    request,
+                    HttpResponse.BodyHandlers.ofByteArray()
+            );
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new OzonApiException(
+                    "Ozon API request was interrupted. url=" + url,
+                    e
+            );
+
+        } catch (IOException e) {
+            throw new OzonApiException(
+                    "Failed to send request to Ozon API. url=" + url,
+                    e
+            );
+        }
+    }
+
+    public List<ProductDto> getProducts(List<Long> skus) throws IOException, InterruptedException {
+        GetProductRequest request = new GetProductRequest();
+        request.setSkus(skus);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.PRODUCT_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        return mapper.readValue(response.body(), GetProductResponse.class).getProducts();
     }
 
     public List<String> getSupplyOrderIdBySupplyNumber(String supplyNumber, SupplyState... supplyStates) throws IOException, InterruptedException {
@@ -516,6 +553,84 @@ public class OzonClient implements MarketplaceClient {
         );
 
         return mapper.readValue(response.body(), GetReturnBarcodePNGResponse.class).getPng();
+    }
+
+    public boolean canCreateCarriage() throws IOException, InterruptedException {
+        GetFbsCarriageListRequest request = new GetFbsCarriageListRequest();
+        GetFbsCarriageListFilter filter = new GetFbsCarriageListFilter();
+
+        filter.setDeliveryMethodId(fbsWarehouseId);
+        request.setFilter(filter);
+        request.setLimit(DELIVERY_METHODS_LIMIT);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.CARRIAGES_LIST.getFullUrl(apiHost),
+                request
+        );
+
+        System.out.println(response.body());
+
+        GetFbsCarriageListResponse fbsCarriageList = mapper.readValue(response.body(), GetFbsCarriageListResponse.class);
+        if (fbsCarriageList.getCarriageMethodsList().isEmpty()) return false;
+        List<CarriageDto> carriages = fbsCarriageList.getCarriageMethodsList().get(0).getCarriages();
+        if (carriages.isEmpty()) return false;
+
+        return carriages.stream().anyMatch(carriageDto -> carriageDto.getId() == 0);
+    }
+
+    public long createCarriage() {
+        CarriageCreateRequest request = new CarriageCreateRequest();
+        request.setDeliveryMethodId(fbsWarehouseId);
+
+        try {
+            HttpResponse<String> response = createJsonBodyAndSendRequest(
+                    OzonApiEndpoint.CARRIAGE_CREATE.getFullUrl(apiHost),
+                    request
+            );
+
+            checkResponse(response);
+
+            return mapper.readValue(response.body(), CarriageCreateResponse.class).getCarriageId();
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new OzonApiException("Creating carriage was interrupted", e);
+        } catch (IOException e) {
+            throw new OzonApiException("Failed to create carriage due to I/O error", e);
+        }
+    }
+
+    public void approveCarriage(long carriageId) throws IOException, InterruptedException {
+        CarriageApproveRequest request = new CarriageApproveRequest();
+        request.setCarriageId(carriageId);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.CARRIAGE_APPROVE.getFullUrl(apiHost),
+                request
+        );
+
+        checkResponse(response);
+    }
+
+    private void checkResponse(HttpResponse<String> response) {
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new OzonApiException(
+                    "Ozon API error. Status: " + response.statusCode()
+                            + ", body: " + response.body()
+            );
+        }
+    }
+
+    public byte[] getCarriageActPdf() throws IOException, InterruptedException {
+        CarriageGetPdfRequest request = new CarriageGetPdfRequest();
+        request.setCarriageId(123712118L);
+
+        HttpResponse<byte[]> response = sendRequestForBytes(
+                OzonApiEndpoint.CARRIAGE_GET_PDF.getFullUrl(apiHost),
+                request
+        );
+
+        return response.body();
     }
 
 }
