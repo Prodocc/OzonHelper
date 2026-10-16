@@ -11,6 +11,7 @@ public enum OzonApiEndpoint {
     FBS_WAREHOUSES_LIST("/v2/warehouse/list"),
     ALL_WAREHOUSES_LIST("/v1/warehouse/ozon/list"),
     SUPPLY_DRAFT_CREATE_CROSSDOCK("/v1/draft/crossdock/create"),
+    SUPPLY_DRAFT_CREATE_DIRECT("/v1/draft/direct/create"),
     SUPPLY_DRAFT_CREATE_STATUS("/v2/draft/create/info"),
     SUPPLY_TIMESLOT_INFO("/v2/draft/timeslot/info"),
     SUPPLY_CREATE("/v2/draft/supply/create"),

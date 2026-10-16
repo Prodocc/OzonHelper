@@ -2,6 +2,7 @@ package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
 import com.example.OzonHelper.dto.response.fbs.FBSWarehouseDto;
+import com.example.OzonHelper.enums.ozon.ClusterType;
 import com.example.OzonHelper.service.FbsService;
 import com.example.OzonHelper.service.OzonAgentService;
 import com.example.OzonHelper.service.ReturnService;
@@ -25,17 +26,19 @@ public class OzonHelperApplication {
 
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
-        FbsService fbsService = run.getBean("fbsService", FbsService.class);
+//        FbsService fbsService = run.getBean("fbsService", FbsService.class);
 //        System.out.println(fbsService.getShopNamesWithAwaitingDeliver());
 //        System.out.println(fbsService.getShopNamesWithAwaitingPackaging());
 
-        fbsService.createAndSendFbsShipmentActs();
+//        fbsService.createAndSendFbsShipmentActs();
 //
 //        ReturnService returnService = run.getBean("returnService", ReturnService.class);
 //        System.out.println(returnService.getShopNamesWithReturns());
 
-//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
-//        OzonClient client = ozonClients.get("453792");
+        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+        OzonClient client = ozonClients.get("453792");
+
+//        client.createDirectSupplyDraft();
 
 //        System.out.println(client.getFBSWarehouses());
 

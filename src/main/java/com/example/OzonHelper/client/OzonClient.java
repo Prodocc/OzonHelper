@@ -11,6 +11,7 @@ import com.example.OzonHelper.dto.request.answers.GetAnswersRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatHistoryRequest;
 import com.example.OzonHelper.dto.request.chat.GetChatListFilter;
 import com.example.OzonHelper.dto.request.chat.GetChatListRequest;
+import com.example.OzonHelper.dto.request.fbo.ClusterInfoDto;
 import com.example.OzonHelper.dto.request.fbs.*;
 import com.example.OzonHelper.dto.request.product.GetProductRequest;
 import com.example.OzonHelper.dto.request.questions.GetQuestionsFilter;
@@ -57,8 +58,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 @Data
@@ -284,6 +288,29 @@ public class OzonClient implements MarketplaceClient {
         return mapper.readValue(response.body(), GetWarehousesResponse.class).getWarehouses();
     }
 
+    public long createDirectSupplyDraft(Map<Long, Integer> items, long macrolocalClusterId) throws IOException, InterruptedException {
+        DirectSupplyDraftCreateRequest request = new DirectSupplyDraftCreateRequest();
+        ClusterInfoDto clusterInfo = new ClusterInfoDto();
+        List<DraftItemDto> draftItems = items
+                .keySet()
+                .stream()
+                .map(sku -> new DraftItemDto(sku, items.get(sku)))
+                .toList();
+
+        clusterInfo.setItems(draftItems);
+        request.setClusterInfo(clusterInfo);
+        request.setMacrolocalClusterId(macrolocalClusterId);
+
+        HttpResponse<String> response = createJsonBodyAndSendRequest(
+                OzonApiEndpoint.SUPPLY_DRAFT_CREATE_DIRECT.getFullUrl(apiHost),
+                request
+        );
+
+        System.out.println(response.body());
+
+        return mapper.readValue(response.body(), DirectSupplyDraftCreateResponse.class).getDraftId();
+    }
+
     public long createSupplyCrossdockDraft(long sku, int quantity, Warehouse warehouse) throws IOException, InterruptedException {
         CreateSupplyCrossdockDraftRequest request = new CreateSupplyCrossdockDraftRequest();
 
@@ -314,7 +341,7 @@ public class OzonClient implements MarketplaceClient {
     }
 
     public DraftCreateStatus checkDraftCreateStatus(long draftId) throws IOException, InterruptedException {
-        SupplyDraftStatusRequest request = new SupplyDraftStatusRequest();
+        SupplyDraftCreateStatusRequest request = new SupplyDraftCreateStatusRequest();
         request.setDraftId(draftId);
 
         HttpResponse<String> response = createJsonBodyAndSendRequest(

@@ -12,7 +12,7 @@ public class CreateSupplyCrossdockDraftRequest {
     @JsonProperty("cluster_info")
     private ClusterInfoDto clusterInfo;
     @JsonProperty("deletion_sku_mode")
-    private final String dsm = "FULL";
+    private final String deletionMode = "FULL";
     @JsonProperty("delivery_info")
     private DeliveryInfoDto deliveryInfo;
 

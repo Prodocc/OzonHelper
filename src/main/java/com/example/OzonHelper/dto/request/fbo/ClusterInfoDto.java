@@ -3,8 +3,10 @@ package com.example.OzonHelper.dto.request.fbo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
-public class SupplyDraftStatusRequest {
-    @JsonProperty("draft_id")
-    private long draftId;
+public class ClusterInfoDto {
+    @JsonProperty("items")
+    private List<DraftItemDto> items;
 }

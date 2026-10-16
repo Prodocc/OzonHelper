@@ -4,7 +4,7 @@ import lombok.Getter;
 
 public enum DraftCreateStatus {
     UNSPECIFIED("UNSPECIFIED", "Не определён"),
-    SUCCESS("SUCESS", "создан"),
+    SUCCESS("SUCCESS", "создан"),
     IN_PROGRESS("IN_PROGRESS", "Создаётся"),
     FAILED("FAILED", "Не удалось создать");
 
