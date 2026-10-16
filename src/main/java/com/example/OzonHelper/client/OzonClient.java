@@ -621,16 +621,27 @@ public class OzonClient implements MarketplaceClient {
         }
     }
 
-    public byte[] getCarriageActPdf() throws IOException, InterruptedException {
+    public byte[] getCarriageActPdf(long carriageId) throws InterruptedException {
         CarriageGetPdfRequest request = new CarriageGetPdfRequest();
-        request.setCarriageId(123712118L);
+        request.setCarriageId(carriageId);
 
-        HttpResponse<byte[]> response = sendRequestForBytes(
-                OzonApiEndpoint.CARRIAGE_GET_PDF.getFullUrl(apiHost),
-                request
+        int attempts = 5;
+        for (int i = 0; i < attempts; i++) {
+
+            HttpResponse<byte[]> response = sendRequestForBytes(
+                    OzonApiEndpoint.CARRIAGE_GET_PDF.getFullUrl(apiHost),
+                    request
+            );
+
+            if (response.statusCode() == 200) {
+                return response.body();
+            }
+            Thread.sleep(1000);
+        }
+
+        throw new OzonApiException(
+                "Carriage was approved, but PDF was not generated in time"
         );
-
-        return response.body();
     }
 
 }

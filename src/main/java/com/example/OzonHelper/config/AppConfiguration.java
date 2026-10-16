@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Configuration
-@EnableConfigurationProperties({StoreProperties.class})
+@EnableConfigurationProperties({StoreProperties.class, MailProperties.class})
 @EnableScheduling
 @EnableAsync
 public class AppConfiguration {

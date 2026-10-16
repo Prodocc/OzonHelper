@@ -26,6 +26,7 @@ public class FbsServiceTest {
     private SheetAnalyzer analyzer;
     private FbsLogDataBuilder dataBuilder;
     private DataNormalizer normalizer;
+    private PdfUtils pdfUtils;
 
     @BeforeEach
     public void init() {
@@ -36,8 +37,9 @@ public class FbsServiceTest {
         this.normalizer = new DataNormalizer();
         this.analyzer = new SheetAnalyzer();
         this.googleClient = mock(GoogleClient.class);
+        this.pdfUtils = new PdfUtils();
         this.calc = new FbsLogScopeCalculator(analyzer);
-        this.fbsService = new FbsService(clients, properties, googleClient, calc, dataBuilder, normalizer);
+        this.fbsService = new FbsService(clients, properties, googleClient, calc, dataBuilder, normalizer, pdfUtils, mock(MailService.class));
     }
 
 
