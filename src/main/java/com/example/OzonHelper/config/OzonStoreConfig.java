@@ -13,5 +13,6 @@ public class OzonStoreConfig {
     private String clientId;
     private String apiKey;
     private String legalEntity;
+    private long fbsWarehouseId;
     private Map<String, String> chatNameIdMap;
 }

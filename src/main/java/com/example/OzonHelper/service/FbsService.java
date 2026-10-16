@@ -12,6 +12,7 @@ import com.google.api.services.sheets.v4.model.Sheet;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
@@ -38,15 +39,19 @@ public class FbsService {
     private final FbsLogScopeCalculator scopeCalculator;
     private final FbsLogDataBuilder dataBuilder;
     private final DataNormalizer normalizer;
+    private final PdfUtils pdfUtils;
+    private final MailService mailService;
 
     public FbsService(Map<String, OzonClient> clients, GoogleSheetsProperties sheetsProperties, GoogleClient googleClient, FbsLogScopeCalculator scopeCalculator,
-                      FbsLogDataBuilder dataBuilder, DataNormalizer normalizer) {
+                      FbsLogDataBuilder dataBuilder, DataNormalizer normalizer, PdfUtils pdfUtils, MailService mailService) {
         this.clients = clients;
         this.sheetsProperties = sheetsProperties;
         this.googleClient = googleClient;
         this.scopeCalculator = scopeCalculator;
         this.dataBuilder = dataBuilder;
         this.normalizer = normalizer;
+        this.pdfUtils = pdfUtils;
+        this.mailService = mailService;
     }
 
     // calls only if there are fbs postings
@@ -131,8 +136,8 @@ public class FbsService {
     //TODO add method that will check all shop from fbs posting with status AWAITING_DELIVER, then form shipment and send to warehouse mail address
     //TODO add method that will check all shop from fbs postings with status AWAITING_PACKAGING, then for each of these postings ->
     //create order in 1C, and send it to the warehouse mail address with the posting barcode label
-    public List<String> getShopNamesWithAwaitingPackaging() {
-        List<String> result = new ArrayList<>();
+    public List<OzonClient> getShopsWithAwaitingPackaging() {
+        List<OzonClient> result = new ArrayList<>();
 
         LocalDateTime to = LocalDateTime.now();
         LocalDateTime from = to.minusDays(5);
@@ -140,7 +145,7 @@ public class FbsService {
         for (OzonClient client : clients.values()) {
             try {
                 List<PostingDto> postings = client.getFbsPosting(from, to, PostingStatus.AWAITING_PACKAGING);
-                if (!postings.isEmpty()) result.add(client.getShopName());
+                if (!postings.isEmpty()) result.add(client);
             } catch (IOException e) {
                 throw new RuntimeException(
                         "Failed to check FBS orders for shop: " + client.getShopName(),
@@ -156,8 +161,8 @@ public class FbsService {
         return result;
     }
 
-    public List<String> getShopNamesWithAwaitingDeliver() {
-        List<String> result = new ArrayList<>();
+    public List<OzonClient> getShopsWithAwaitingDeliver() {
+        List<OzonClient> result = new ArrayList<>();
 
         LocalDateTime to = LocalDateTime.now();
         LocalDateTime from = to.minusDays(5);
@@ -165,7 +170,7 @@ public class FbsService {
         for (OzonClient client : clients.values()) {
             try {
                 List<PostingDto> postings = client.getFbsPosting(from, to, PostingStatus.AWAITING_DELIVER);
-                if (!postings.isEmpty()) result.add(client.getShopName());
+                if (!postings.isEmpty()) result.add(client);
             } catch (IOException e) {
                 throw new RuntimeException(
                         "Failed to check FBS orders for shop: " + client.getShopName(),
@@ -179,6 +184,49 @@ public class FbsService {
             }
         }
         return result;
+    }
+
+    public void createAndSendFbsShipmentActs() throws IOException, InterruptedException {
+        List<Path> fbsShipmentActs = createFbsShipmentActs();
+        sendFbsShipmentActs(fbsShipmentActs);
+    }
+
+    public List<Path> createFbsShipmentActs() throws IOException, InterruptedException {
+        List<OzonClient> awaitingPackaging = getShopsWithAwaitingPackaging();
+
+        if (!awaitingPackaging.isEmpty()) {
+            assembleFbsOrders(awaitingPackaging);
+        }
+
+        List<OzonClient> awaitingDelivery = getShopsWithAwaitingDeliver();
+
+        if (awaitingDelivery.isEmpty()) {
+            return List.of();
+        }
+
+        List<Path> paths = new ArrayList<>();
+        for (OzonClient client : awaitingDelivery) {
+            if (!client.canCreateCarriage()) {
+                continue;
+            }
+            long carriageId = client.createCarriage();
+            client.approveCarriage(carriageId);
+            byte[] carriageActPdf = client.getCarriageActPdf(carriageId);
+            byte[] extractedPdf = pdfUtils.extractPage(carriageActPdf);
+            Path path = pdfUtils.savePdf(extractedPdf, carriageId);
+            paths.add(path);
+        }
+        return paths;
+    }
+
+    public void sendFbsShipmentActs(List<Path> fbsShipmentActs) {
+        List<String> recipients = new ArrayList<>();
+        recipients.add("test");
+        mailService.sendWithAttachments(recipients, "FBS Листы отгрузки", "", fbsShipmentActs);
+    }
+
+    public void assembleFbsOrders(List<OzonClient> awaitingPackaging) {
+
     }
 
 }

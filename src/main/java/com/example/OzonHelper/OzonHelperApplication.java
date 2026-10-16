@@ -1,21 +1,21 @@
 package com.example.OzonHelper;
 
 import com.example.OzonHelper.client.OzonClient;
-import com.example.OzonHelper.dto.response.fbs.PostingDto;
-import com.example.OzonHelper.dto.response.returns.ReturnDto;
-import com.example.OzonHelper.dto.response.returns.ReturnEntityDto;
-import com.example.OzonHelper.service.CrossdockReportWatcher;
+import com.example.OzonHelper.dto.response.fbs.FBSWarehouseDto;
 import com.example.OzonHelper.service.FbsService;
-import com.example.OzonHelper.service.ReportService;
+import com.example.OzonHelper.service.OzonAgentService;
 import com.example.OzonHelper.service.ReturnService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -25,31 +25,21 @@ public class OzonHelperApplication {
 
         ConfigurableApplicationContext run = SpringApplication.run(OzonHelperApplication.class, args);
 
-        ReturnService returnService = run.getBean("returnService", ReturnService.class);
-        List<String> shopNamesWithReturns = returnService.getShopNamesWithReturns();
-        System.out.println(shopNamesWithReturns);
+        FbsService fbsService = run.getBean("fbsService", FbsService.class);
+//        System.out.println(fbsService.getShopNamesWithAwaitingDeliver());
+//        System.out.println(fbsService.getShopNamesWithAwaitingPackaging());
 
-//        List<ReturnDto> returnByBarcode = client.getReturnByBarcode( "ii18516982627");
-//        System.out.println(returnByBarcode);
-
+        fbsService.createAndSendFbsShipmentActs();
 //
 //        ReturnService returnService = run.getBean("returnService", ReturnService.class);
-//        Path path = Path.of("D:\\returns\\shopname\\029199977 от 24.08.2026.pdf");
-//        List<ReturnEntityDto> returnActEntities = returnService.getReturnActEntities(path);
-//
-//        returnActEntities.forEach(System.out::println);
+//        System.out.println(returnService.getShopNamesWithReturns());
 
-//        returnService.sendReturnBarcodeNotifications("414671305");
-//
-//        QuestionService questionService = run.getBean("questionService", QuestionService.class);
-//        questionService.syncQuestions();
-//
-//        CrossdockReportWatcher crossdockReportWatcher = run.getBean("crossdockReportWatcher", CrossdockReportWatcher.class);
-//        crossdockReportWatcher.watch();
-//
-//        ReportService reportService = run.getBean("reportService", ReportService.class);
-//        reportService.updateDailyReport(false);
-//        reportService.processCrossdockReport("123", Path.of("1"));
+//        Map<String, OzonClient> ozonClients = run.getBean("ozonClients", Map.class);
+//        OzonClient client = ozonClients.get("453792");
+
+//        System.out.println(client.getFBSWarehouses());
+
+//        System.out.println(client.canCreateCarriage());
 
         System.exit(0);
     }
